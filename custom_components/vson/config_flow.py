@@ -128,7 +128,7 @@ class VsonConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, entry_data: dict[str, Any]
     ) -> config_entries.ConfigFlowResult:
         self._reauth_entry = self.hass.config_entries.async_get_entry(
-            self.context["entry_id"]
+            self.context.get("entry_id", "")
         )
         return await self.async_step_reauth_confirm()
 
@@ -172,7 +172,9 @@ class VsonConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
+        entry = self.hass.config_entries.async_get_entry(
+            self.context.get("entry_id", "")
+        )
         errors: dict[str, str] = {}
         if user_input is not None and entry is not None:
             username = user_input[CONF_USERNAME].strip()
@@ -203,8 +205,8 @@ class VsonConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(entry: ConfigEntry) -> VsonOptionsFlow:
-        return VsonOptionsFlow(entry)
+    def async_get_options_flow(config_entry: ConfigEntry) -> VsonOptionsFlow:
+        return VsonOptionsFlow(config_entry)
 
 
 class VsonOptionsFlow(config_entries.OptionsFlow):
