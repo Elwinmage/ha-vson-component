@@ -1,0 +1,23 @@
+version: 2
+updates:
+  # Update GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Regroupe toutes les actions dans une seule PR
+    groups:
+      actions-group:
+        patterns:
+          - "*"
+
+  # Update pip packages
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Regroupe toutes les dépendances Python dans une seule PR
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"

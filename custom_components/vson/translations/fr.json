@@ -1,0 +1,70 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "VSON — Connexion",
+        "description": "Saisissez vos identifiants de l'application VSON (téléphone ou e-mail).",
+        "data": {
+          "username": "Numéro de téléphone ou e-mail",
+          "password": "Mot de passe",
+          "scan_interval": "Intervalle de rafraîchissement (secondes)"
+        },
+        "data_description": {
+          "scan_interval": "Fréquence d'interrogation de l'appareil (10–600 s). Défaut : 30 s."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Ré-authentifier VSON",
+        "description": "La session pour **{username}** n'est plus valide. Saisissez à nouveau votre mot de passe.",
+        "data": {
+          "password": "Mot de passe"
+        }
+      },
+      "reconfigure": {
+        "title": "Modifier le compte VSON",
+        "data": {
+          "username": "Numéro de téléphone ou e-mail",
+          "password": "Mot de passe",
+          "scan_interval": "Intervalle de rafraîchissement (secondes)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Identifiants invalides.",
+      "cannot_connect": "Impossible de joindre le cloud VSON.",
+      "unknown": "Erreur inattendue."
+    },
+    "abort": {
+      "already_configured": "Ce compte est déjà configuré.",
+      "reauth_successful": "Ré-authentification réussie.",
+      "reconfigure_successful": "Compte mis à jour."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options VSON",
+        "data": {
+          "scan_interval": "Intervalle de rafraîchissement (secondes)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery": { "name": "Batterie" },
+      "firmware": { "name": "Micrologiciel" }
+    },
+    "binary_sensor": {
+      "online": { "name": "En ligne" },
+      "food_shortage": { "name": "Manque de nourriture" }
+    },
+    "button": {
+      "feed": { "name": "Nourrir maintenant" },
+      "refresh": { "name": "Rafraîchir" }
+    },
+    "switch": {
+      "schedule": { "name": "Distribution programmée" }
+    }
+  }
+}

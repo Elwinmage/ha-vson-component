@@ -1,0 +1,70 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "VSON — Sign in",
+        "description": "Enter your VSON app credentials (phone number or e-mail).",
+        "data": {
+          "username": "Phone number or e-mail",
+          "password": "Password",
+          "scan_interval": "Refresh interval (seconds)"
+        },
+        "data_description": {
+          "scan_interval": "How often the device state is polled (10–600 s). Default: 30 s."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate VSON",
+        "description": "Your session for **{username}** is no longer valid. Enter your password again.",
+        "data": {
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Update VSON account",
+        "data": {
+          "username": "Phone number or e-mail",
+          "password": "Password",
+          "scan_interval": "Refresh interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid credentials.",
+      "cannot_connect": "Cannot reach the VSON cloud.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This account is already configured.",
+      "reauth_successful": "Re-authentication successful.",
+      "reconfigure_successful": "Account updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "VSON options",
+        "data": {
+          "scan_interval": "Refresh interval (seconds)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery": { "name": "Battery" },
+      "firmware": { "name": "Firmware" }
+    },
+    "binary_sensor": {
+      "online": { "name": "Online" },
+      "food_shortage": { "name": "Food shortage" }
+    },
+    "button": {
+      "feed": { "name": "Feed now" },
+      "refresh": { "name": "Refresh" }
+    },
+    "switch": {
+      "schedule": { "name": "Scheduled feeding" }
+    }
+  }
+}

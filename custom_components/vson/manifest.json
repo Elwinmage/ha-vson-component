@@ -1,0 +1,19 @@
+{
+  "domain": "vson",
+  "name": "VSON",
+  "after_dependencies": [
+    "frontend"
+  ],
+  "codeowners": [
+    "@Elwinmage"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "http"
+  ],
+  "documentation": "https://github.com/Elwinmage/ha-vson-component",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/Elwinmage/ha-vson-component/issues",
+  "requirements": [],
+  "version": "v0.1.0"
+}
