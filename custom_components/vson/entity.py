@@ -81,10 +81,9 @@ class VsonEntity(CoordinatorEntity[VsonCoordinator]):
 
     @property
     def available(self) -> bool:  # type: ignore[override]
-        dev = self._device
-        # is_online is tri-state: None (unknown) is treated as available.
-        return bool(
-            self.coordinator.last_update_success
-            and dev is not None
-            and dev.is_online is not False
-        )
+        # Availability follows the cloud poll, NOT the device's online flag:
+        # battery feeders report offline while asleep but stay cloud-
+        # controllable (a queued feed runs when they next wake up), so greying
+        # the controls out would be wrong. The dedicated "online" binary sensor
+        # reports the real connection state.
+        return bool(self.coordinator.last_update_success and self._device is not None)

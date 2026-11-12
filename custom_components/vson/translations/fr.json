@@ -66,5 +66,18 @@
     "switch": {
       "schedule": { "name": "Distribution programmée" }
     }
+  },
+  "issues": {
+    "unknown_device": {
+      "title": "Appareil VSON non pris en charge : {name}",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Appareil VSON non pris en charge",
+            "description": "**{name}** (type `{type}`) est présent sur votre compte mais aucune famille d'appareils ne le gère encore : il n'obtient qu'un état « en ligne » générique et un bouton de rafraîchissement.\n\nVous pouvez aider à l'ajouter en ouvrant une issue (le lien pré-remplit le type de l'appareil) :\n\n[Ouvrir une issue sur GitHub]({url})\n\nValidez ci-dessous pour masquer ce message."
+          }
+        }
+      }
+    }
   }
 }

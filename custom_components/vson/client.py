@@ -29,6 +29,7 @@ from .const import (
     EP_BLEY_HOMEPAGE,
     EP_BLEY_INTERVAL,
     EP_BLEY_REFRESH,
+    EP_BLEY_ROTATE,
     EP_HOME_PAGE,
     HDR_APT,
     HDR_APV_DEFAULT,
@@ -221,8 +222,16 @@ class VsonClient:
         return await self._post(SVC_AIR, EP_BLEY_REFRESH, {"mac": mac})
 
     async def bley_feed_now(self, mac: str) -> Any:
-        """Dispense one manual portion immediately."""
+        """Dispense one portion immediately (base WP8621, by mac)."""
         return await self._post(SVC_AIR, EP_BLEY_FEED_NOW, {"mac": mac})
+
+    async def bley_rotate(self, device_id: str) -> Any:
+        """Dispense one portion immediately (WP8621A/8622/8623, by id).
+
+        The classic feeder feeds by triggering the rotor through
+        ``queryBleyRotateUrl`` keyed on the equipment id, not ``updateBleyFeed``.
+        """
+        return await self._post(SVC_AIR, EP_BLEY_ROTATE, {"id": device_id})
 
     async def bley_set_schedule_enabled(self, device_id: str, enabled: bool) -> Any:
         """Enable or disable the feeder's scheduled feeding."""

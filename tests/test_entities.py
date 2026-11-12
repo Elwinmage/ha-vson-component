@@ -29,6 +29,30 @@ def test_firmware_sensor_value(coordinator):
     assert sensor.native_value == "1.0.3"
 
 
+async def test_battery_sensor_skipped_when_absent(hass, mock_client):
+    """A mains-powered feeder (no 'battery' field) gets no battery sensor."""
+    from unittest.mock import AsyncMock
+
+    from custom_components.vson import sensor as sensor_platform
+    from custom_components.vson.coordinator import VsonCoordinator
+    from custom_components.vson.devices import VsonDevice
+
+    coord = VsonCoordinator(hass, mock_client, scan_interval=30)
+    coord.data = {
+        MOCK_DID: VsonDevice(
+            raw={"id": MOCK_DID, "mac": "x", "type": "86221", "onoff": "1"},
+            home={"version": "WP8621NK_04", "isMaterial": "1"},  # no battery
+        )
+    }
+    hass.data["vson"] = {"e": coord}
+    entry = AsyncMock(entry_id="e")
+    added: list = []
+    await sensor_platform.async_setup_entry(hass, entry, lambda es: added.extend(es))
+    keys = {e.entity_description.key for e in added}
+    assert "battery" not in keys
+    assert "firmware" in keys
+
+
 def test_online_binary_sensor(coordinator):
     bs = VsonBinarySensor(coordinator, MOCK_DID, _desc(BINARY_DESCRIPTIONS, "online"))
     assert bs.is_on is True
@@ -40,11 +64,11 @@ def test_food_shortage_logic(coordinator):
     bs = VsonBinarySensor(
         coordinator, MOCK_DID, _desc(BINARY_DESCRIPTIONS, "food_shortage")
     )
-    # Default mock: isMaterial=1, isMaterialRemind=0 → no shortage.
+    # Default mock: isMaterial=0 → food present, no shortage.
     assert bs.is_on is False
-    # Flip the reminder on.
+    # isMaterial == 1 means shortage.
     coordinator.data[MOCK_DID] = VsonDevice(
-        raw=coordinator.data[MOCK_DID].raw, home={"isMaterialRemind": 1}
+        raw=coordinator.data[MOCK_DID].raw, home={"isMaterial": 1}
     )
     assert bs.is_on is True
 
@@ -52,7 +76,8 @@ def test_food_shortage_logic(coordinator):
 async def test_feed_button_presses_coordinator(coordinator, mock_client):
     button = VsonFeedButton(coordinator, MOCK_DID, FEED_DESCRIPTION)
     await button.async_press()
-    mock_client.bley_feed_now.assert_awaited_once()
+    # WP8621A feeds via updateBleyFeed(mac).
+    mock_client.bley_feed_now.assert_awaited_once_with("AABBCCDDEEFF")
 
 
 async def test_schedule_switch_optimistic(coordinator, mock_client):

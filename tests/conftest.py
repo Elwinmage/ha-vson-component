@@ -27,13 +27,16 @@ MOCK_TOKEN = "raw-token-abc123"
 MOCK_DID = "a373c1f9a9b0466f9c01f8124cd57f2f"
 MOCK_MAC = "AABBCCDDEEFF"
 
+# Mirrors a real queryHomePage entry: type "86221" (WP8621A), online flag in
+# "onoff", colon-separated mac.
 MOCK_DEVICE = {
     "id": MOCK_DID,
     "mac": MOCK_MAC,
-    "type": "8621",
-    "typeName": "Fish Feeder",
+    "type": "86221",
+    "typeName": "智能喂鱼器(经典版)",
+    "typeNameEn": "Intelligent fish feeder",
     "name": "Reef Feeder",
-    "status": "1",
+    "onoff": "1",
 }
 
 MOCK_GENERIC_DEVICE = {
@@ -42,13 +45,13 @@ MOCK_GENERIC_DEVICE = {
     "type": "9999",
     "typeName": "Mystery Device",
     "name": "Other VSON",
-    "status": "0",
+    "onoff": "0",
 }
 
 MOCK_BLEY_HOME = {
     "battery": 80,
-    "equipmentState": 1,
-    "isMaterial": 1,
+    "equipmentState": 0,  # 0 = online
+    "isMaterial": 0,  # 0 = food present (no shortage)
     "isMaterialRemind": 0,
     "isPump": 0,
     "version": "1.0.3",
@@ -85,6 +88,7 @@ def mock_client():
     client.bley_home = AsyncMock(return_value=dict(MOCK_BLEY_HOME))
     client.bley_refresh = AsyncMock(return_value=None)
     client.bley_feed_now = AsyncMock(return_value=None)
+    client.bley_rotate = AsyncMock(return_value=None)
     client.bley_set_schedule_enabled = AsyncMock(return_value=None)
     client.token = MOCK_TOKEN
     client.user_id = MOCK_DID

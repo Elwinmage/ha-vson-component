@@ -23,7 +23,15 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from .const import MANUFACTURER, TYPE_WP8621, TYPE_WP8621_ALT
+from .const import (
+    FEED_MODE_FEED_MAC,
+    MANUFACTURER,
+    TYPE_WP8621,
+    TYPE_WP8621_ALT,
+    TYPE_WP8621A,
+    TYPE_WP8622,
+    TYPE_WP8623,
+)
 
 if TYPE_CHECKING:
     from .client import VsonClient
@@ -64,28 +72,45 @@ class DeviceFamily:
     capabilities: frozenset[str]
     fetch_home: Callable[[VsonClient, dict], Awaitable[dict]] = _fetch_none
     manufacturer: str = MANUFACTURER
+    feed_mode: str = ""  # one of const.FEED_MODE_* when CAP_FEED is set
 
     def has(self, capability: str) -> bool:
         return capability in self.capabilities
 
 
-# ── WP8621 auto-feeder (all variants N/E/H/F/B/P/A/C) ─────────────────────────
+_FEEDER_CAPS = frozenset(
+    {
+        CAP_ONLINE,
+        CAP_REFRESH,
+        CAP_FEED,
+        CAP_SCHEDULE,
+        CAP_BATTERY,
+        CAP_FOOD_LEVEL,
+        CAP_FIRMWARE,
+    }
+)
+
+# ── Base WP8621 feeder: manual feed via updateBleyFeed(mac) ───────────────────
 WP8621_FAMILY = DeviceFamily(
     key="wp8621",
     model="WP8621",
     type_codes=frozenset({TYPE_WP8621, TYPE_WP8621_ALT}),
-    capabilities=frozenset(
-        {
-            CAP_ONLINE,
-            CAP_REFRESH,
-            CAP_FEED,
-            CAP_SCHEDULE,
-            CAP_BATTERY,
-            CAP_FOOD_LEVEL,
-            CAP_FIRMWARE,
-        }
-    ),
+    capabilities=_FEEDER_CAPS,
     fetch_home=_fetch_bley_home,
+    feed_mode=FEED_MODE_FEED_MAC,
+)
+
+# ── WP8621A / 8622 / 8623 feeder ──────────────────────────────────────────────
+# Manual feed is updateBleyFeed(mac): verified on a real WP8621NK (type 86221),
+# it dispenses even while the cloud reports the device offline. The app's
+# queryBleyRotateUrl(id) path does NOT dispense here, so feed_mac is used.
+WP8621A_FAMILY = DeviceFamily(
+    key="wp8621a",
+    model="WP8621A",
+    type_codes=frozenset({TYPE_WP8621A, TYPE_WP8622, TYPE_WP8623}),
+    capabilities=_FEEDER_CAPS,
+    fetch_home=_fetch_bley_home,
+    feed_mode=FEED_MODE_FEED_MAC,
 )
 
 # ── Generic fallback for any other VSON device ────────────────────────────────
@@ -99,7 +124,7 @@ GENERIC_FAMILY = DeviceFamily(
 )
 
 # Registry of fully-mapped families. Add new DeviceFamily entries here.
-FAMILIES: tuple[DeviceFamily, ...] = (WP8621_FAMILY,)
+FAMILIES: tuple[DeviceFamily, ...] = (WP8621_FAMILY, WP8621A_FAMILY)
 
 _BY_TYPE: dict[str, DeviceFamily] = {
     code: fam for fam in FAMILIES for code in fam.type_codes
@@ -140,15 +165,26 @@ class VsonDevice:
 
     @property
     def is_online(self) -> bool | None:
-        """Tri-state online flag from the device-list ``status`` field.
+        """Tri-state online flag.
 
-        VSON reports ``status`` as "1"/"0" (or online/offline). None means the
-        status was absent, which platforms treat as "available" (optimistic).
+        For feeders the reliable signal is ``equipmentState`` in the realtime
+        home data: 0 = online, non-zero = offline (app handleOnlineStatus). The
+        device-list ``onoff`` is unreliable on these models, so it is only a
+        fallback for devices without home data. None means unknown. Note that
+        availability does not depend on this (see entity.py).
         """
-        status = self.raw.get("status")
-        if status is None:
+        state = self.home.get("equipmentState")
+        if state is not None:
+            try:
+                return int(state) == 0
+            except (TypeError, ValueError):
+                pass
+        raw = self.raw.get("onoff")
+        if raw is None:
+            raw = self.raw.get("status")
+        if raw is None:
             return None
-        text = str(status).lower()
+        text = str(raw).lower()
         if text in ("1", "online", "true", "on"):
             return True
         if text in ("0", "offline", "false", "off"):

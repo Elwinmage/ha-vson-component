@@ -65,8 +65,13 @@ async def async_setup_entry(
     entities: list[SensorEntity] = []
     for device_id, device in (coordinator.data or {}).items():
         for desc in SENSOR_DESCRIPTIONS:
-            if device.family.has(desc.capability):
-                entities.append(VsonSensor(coordinator, device_id, desc))
+            if not device.family.has(desc.capability):
+                continue
+            # Attribute-backed sensors are only created when the model actually
+            # reports that field (e.g. mains-powered feeders have no "battery").
+            if desc.attr and device.value(desc.attr) is None:
+                continue
+            entities.append(VsonSensor(coordinator, device_id, desc))
     async_add_entities(entities)
 
 

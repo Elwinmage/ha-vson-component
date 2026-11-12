@@ -16,6 +16,13 @@ _LOGGER = logging.getLogger(__package__)
 DOMAIN = "vson"
 MANUFACTURER = "VSON"
 
+# GitHub repository, used to pre-fill a "new issue" link for unknown devices.
+GITHUB_REPO = "Elwinmage/ha-vson-component"
+
+# ── Repairs ───────────────────────────────────────────────────────────────────
+# Raised once per unknown device "type" so a new family can be mapped.
+ISSUE_UNKNOWN_DEVICE = "unknown_device"
+
 # ── Cloud endpoints ───────────────────────────────────────────────────────────
 # Production host (Constant.f6441d in the app). The app also ships a test host
 # (ts.vson.com.cn:26082) which users can set via the advanced "server" option.
@@ -64,10 +71,23 @@ MAX_SCAN_INTERVAL = 600
 UPDATE_INTERVAL = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
 
 # ── Device family type codes (field "type" in queryHomePage) ──────────────────
-# The WP8621 auto-feeder (all variants N/E/H/F/B/P/A/C) reports type "8621"
-# (or "86211") and is driven by the "Bley" endpoints.
-TYPE_WP8621 = "8621"
-TYPE_WP8621_ALT = "86211"
+# The VSON auto-feeders are all driven by the "Bley" endpoints, but they split
+# into two sub-families by how a manual feed is triggered (confirmed from the
+# app's per-model view-models):
+#   • base WP8621  (types 8621 / 86211) → updateBleyFeed(mac)
+#   • WP8621A/8622 (types 86221 / 8622 / 8623) → queryBleyRotateUrl(id)
+# Type codes map to the app's Constant.* (T1=8621, Y1=86211, V1=86221, U1=8622,
+# X1=8623). Realtime data (queryBleyHomepage by mac) and settings
+# (queryBleyEquipment by id) are shared by all of them.
+TYPE_WP8621 = "8621"  # Constant.T1
+TYPE_WP8621_ALT = "86211"  # Constant.Y1
+TYPE_WP8621A = "86221"  # Constant.V1 — "Intelligent fish feeder (classic)"
+TYPE_WP8622 = "8622"  # Constant.U1
+TYPE_WP8623 = "8623"  # Constant.X1
+
+# Manual-feed strategies.
+FEED_MODE_FEED_MAC = "feed_mac"  # updateBleyFeed(mac)
+FEED_MODE_ROTATE_ID = "rotate_id"  # queryBleyRotateUrl(id)
 
 # ── Air endpoints for the WP8621 feeder family ("Bley") ───────────────────────
 EP_HOME_PAGE = "queryHomePage"  # no field -> all devices grouped by home
@@ -80,3 +100,4 @@ EP_BLEY_FEED_IS_OPEN = "updateBleyFeedIsOpen"  # fields: id, isOpen
 EP_BLEY_INTERVAL = "updateBleyInterval"  # map: id, isOpen, openTime, frequency
 EP_BLEY_PUMP = "updateBleyPump"  # fields: mac, isOpen
 EP_BLEY_LIGHT_IS_OPEN = "updateBleyLightIsOpen"  # fields: id, isOpen, type
+EP_BLEY_ROTATE = "queryBleyRotateUrl"  # field: id -> manual feed (8622/86221/8623)

@@ -66,5 +66,18 @@
     "switch": {
       "schedule": { "name": "Scheduled feeding" }
     }
+  },
+  "issues": {
+    "unknown_device": {
+      "title": "Unsupported VSON device: {name}",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Unsupported VSON device",
+            "description": "**{name}** (type `{type}`) is on your account but no device family supports it yet, so it only gets a generic online state and a refresh button.\n\nYou can help add support by opening an issue (the link pre-fills the device type):\n\n[Open an issue on GitHub]({url})\n\nSubmit below to dismiss this message."
+          }
+        }
+      }
+    }
   }
 }

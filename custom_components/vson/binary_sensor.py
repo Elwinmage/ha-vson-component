@@ -25,24 +25,19 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _food_shortage(dev: VsonDevice) -> bool | None:
-    """Best-effort food-shortage flag for the WP8621 feeder.
+    """Food-shortage flag for the WP8621 feeder.
 
-    The home payload exposes ``isMaterialRemind`` (low-food reminder) and
-    ``isMaterial``. We report a problem when the reminder is active or the
-    material flag reads empty.
+    In the app, ``isMaterial == 1`` maps to "shortage_of_material" (food
+    missing) and 0 to "no shortage". ``isMaterialRemind`` is only a secondary
+    user-reminder toggle, so the shortage state is ``isMaterial == 1``.
     """
-    remind = dev.value("isMaterialRemind")
     material = dev.value("isMaterial")
-    if remind is None and material is None:
+    if material is None:
         return None
     try:
-        if remind is not None and int(remind) == 1:
-            return True
-        if material is not None and int(material) == 0:
-            return True
+        return int(material) == 1
     except (TypeError, ValueError):
         return None
-    return False
 
 
 @dataclass(frozen=True, kw_only=True)
