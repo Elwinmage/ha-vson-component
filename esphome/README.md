@@ -130,7 +130,7 @@ running and the install simply restarts on the next boot.
 
 A single bi-color LED (pins P0/P1):
 
-- **Blue** blinks while WiFi is disconnected (boot included), off once connected.
+- **Blue** blinks while WiFi is disconnected (boot included), steady once connected.
 - **Red** blinks while food is missing, off otherwise.
 
 If the colors are swapped on your unit, exchange `pin_led_blue` and

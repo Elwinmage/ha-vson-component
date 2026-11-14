@@ -106,7 +106,9 @@ wifi:
     ssid: FishFeeder Fallback Hotspot
     password: !secret ap_password   # see secrets.yaml.example
   on_connect:
-    - light.turn_off: led_blue
+    - light.turn_on:
+        id: led_blue
+        effect: "None"   # steady blue once connected; blinking = WiFi lost / boot
   on_disconnect:
     - light.turn_on:
         id: led_blue
