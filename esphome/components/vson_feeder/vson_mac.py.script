@@ -1,0 +1,7 @@
+# pylint: disable=E0602
+Import("env")  # noqa
+
+# Route the Beken SDK's MAC loader (cfg_load_mac) through the wrapper defined in
+# vson_feeder.cpp, so each feeder gets a distinct, locally-administered MAC
+# instead of LibreTiny's fixed default. Harmless if the wrapper is absent.
+env.Append(LINKFLAGS=["-Wl,-wrap,cfg_load_mac"])

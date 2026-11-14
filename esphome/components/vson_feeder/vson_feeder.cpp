@@ -74,3 +74,41 @@ float read_food_sensor() {
 
 }  // namespace vson_feeder
 }  // namespace esphome
+
+// ---------------------------------------------------------------------------
+// Per-device MAC address
+//
+// LibreTiny gives every BK7231N the same built-in default MAC, and this module
+// has no unique hardware ID to derive one from (no eFuse MAC, no flash unique-ID
+// opcode). Several feeders on one network would therefore share a MAC.
+//
+// With -Wl,-wrap,cfg_load_mac (added by vson_mac.py.script), the SDK's MAC
+// loader is routed here instead. We build a stable, locally-administered MAC
+// from the device's ESPHome name — which is unique per feeder — so each unit
+// keeps a distinct MAC across reboots without any storage.
+// ---------------------------------------------------------------------------
+
+#include "esphome/core/application.h"
+
+extern "C" void __wrap_cfg_load_mac(uint8_t *mac) {
+  const std::string &name = esphome::App.get_name();
+
+  // FNV-1a over the name, then a second mixed pass for the last byte.
+  uint32_t h1 = 2166136261u;
+  for (char c : name) {
+    h1 ^= (uint8_t) c;
+    h1 *= 16777619u;
+  }
+  uint32_t h2 = h1 ^ 0x9e3779b9u;
+  for (char c : name) {
+    h2 = (h2 << 5) | (h2 >> 27);
+    h2 += (uint8_t) c;
+  }
+
+  mac[0] = 0x02;  // locally administered (bit 1), unicast (bit 0 clear)
+  mac[1] = (h1 >> 0) & 0xFF;
+  mac[2] = (h1 >> 8) & 0xFF;
+  mac[3] = (h1 >> 16) & 0xFF;
+  mac[4] = (h1 >> 24) & 0xFF;
+  mac[5] = h2 & 0xFF;
+}

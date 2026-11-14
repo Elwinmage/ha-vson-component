@@ -9,6 +9,10 @@ sensor, manual feed, and the status LED — no cloud.
 The firmware integrates with [ha-reef-card](https://github.com/Elwinmage/ha-reef-card)
 through the project name `vson.fish_feeder`.
 
+> **Tested only on the `WP8621_V12` board** (BK7231N / BL2028N, module
+> WIFI001_V20). Other board revisions may differ — pin map, LED colors or
+> sensor — so check before flashing.
+
 ## Why this needs a dedicated config
 
 Two things make this module special, both handled by the config and the
@@ -46,11 +50,11 @@ bk72xx:
     uart_port: 1          # logs on UART1 (P10/P11); P0/P1 drive the LEDs
 ```
 
-Before building, set:
-
-- `wifi_ssid` / `wifi_password` in your `secrets.yaml`;
-- your own API encryption key and fallback-hotspot password in `fishfeeder.yaml`
-  (the ones shipped are placeholders).
+Before building, copy `secrets.yaml.example` to `secrets.yaml` and fill in:
+`wifi_ssid`, `wifi_password`, `api_encryption_key` (generate one with
+`openssl rand -base64 32`, or let ESPHome suggest it when you adopt the device)
+and `ap_password`. The device YAML keeps no keys in clear — it reads them with
+`!secret`.
 
 The number of feeding slots is the number of `feed_slot_*` blocks in the
 `packages:` section — add or remove one to change it.
@@ -131,6 +135,48 @@ A single bi-color LED (pins P0/P1):
 
 If the colors are swapped on your unit, exchange `pin_led_blue` and
 `pin_led_red` at the top of `fishfeeder.yaml`.
+
+## Food level: calibration and alarm
+
+The level is read optically: an IR emitter (P23) is lit for half a second every
+10 s, and the receiver (P22) is sampled. The light reaches the receiver when the
+hopper is **empty** (high voltage) and is blocked when **food** is in the way
+(lower voltage). Three entities expose it:
+
+- **Food Sensor Voltage** (diagnostic) — the raw reading, ~2.4 V when empty.
+- **Food Level Sensor** (problem) — *on* = food is missing.
+- **Food Sensor Threshold** (config, V) — food is reported missing when the
+  voltage rises **above** this. Default 1.6 V.
+
+**Calibrating.** Empty the hopper, then press the **Food Sensor Calibration**
+button. It reads the empty level and sets the threshold to **two-thirds** of it
+(the rule the stock firmware uses), so a filled hopper — which reads lower —
+stays below the threshold and does not alarm. Do it once per unit, and again if
+you change the type of food or the ambient light. If the hopper is not actually
+empty (reading too low) the calibration is ignored and logs a warning.
+
+**Food Sensor Delay** (config, s, 3–30). This is a debounce: the level must stay
+past the threshold **this long** before the alarm arms or clears, which stops it
+flickering on a borderline reading. Since the sensor is read every 10 s, a value
+under 10 s just means "confirm on the next reading"; 25 s ≈ three readings in a
+row, like the stock firmware.
+
+## MAC address — unique per feeder
+
+LibreTiny gives every BK7231N the same default MAC (`C8:47:8C:42:00:48`), and
+this chip exposes no unique hardware ID to build one from (no eFuse MAC, no
+flash unique-ID). Several feeders on one network would therefore clash.
+
+The `vson_feeder` component fixes this: it derives a stable, locally-administered
+MAC from the device's ESPHome **name** and applies it. So give each feeder a
+**distinct `name:`** — you already do, one YAML per device — and each gets its
+own MAC, the same across reboots. Check it in the boot log:
+
+```
+[wifi] MAC Address: 02:…
+```
+
+Set `unique_mac: false` under `vson_feeder:` to keep LibreTiny's default.
 
 ## Hardware wiring (motor, sensors)
 
