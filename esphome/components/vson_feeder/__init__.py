@@ -9,15 +9,19 @@ Adding ``vson_feeder:`` to a configuration:
   building the OTA part of ``firmware.uf2`` in the format that bootloader
   installs (see ``vson_ota.py.script``);
 - gives each feeder a distinct, locally-administered MAC derived from its
-  ESPHome name, instead of LibreTiny's fixed default (see ``vson_mac.py.script``
-  and ``__wrap_cfg_load_mac`` in ``vson_feeder.cpp``).
+  ESPHome name, instead of LibreTiny's fixed default. This is done by wrapping
+  ``wifi_get_mac_address()`` at link time (``-Wl,-wrap,...``); see
+  ``__wrap_wifi_get_mac_address`` in ``vson_feeder.cpp``;
+- logs a short diagnostic banner at boot (component revision, whether the MAC
+  hook was actually linked in, and the effective STA MAC) so a single boot log
+  tells whether a new build really took effect.
 """
 
 from pathlib import Path
 
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.const import PLATFORM_BK72XX
+from esphome.const import CONF_ID, PLATFORM_BK72XX
 from esphome.core import CORE
 from esphome.helpers import copy_file_if_changed
 
@@ -25,11 +29,20 @@ CONF_STOCK_BOOTLOADER_OTA = "stock_bootloader_ota"
 CONF_UNIQUE_MAC = "unique_mac"
 
 OTA_SCRIPT = "vson_ota.py"
-MAC_SCRIPT = "vson_mac.py"
+
+# Link-time hook that replaces the module's fixed default MAC with a per-device
+# one. It must land in the final link's LINKFLAGS; adding it as a build flag is
+# the canonical ESPHome path (PlatformIO routes -Wl,* build flags to LINKFLAGS,
+# and LibreTiny's link step honours them, as it uses -Wl,-wrap itself).
+MAC_WRAP_FLAG = "-Wl,-wrap,wifi_get_mac_address"
+
+vson_feeder_ns = cg.esphome_ns.namespace("vson_feeder")
+VsonFeeder = vson_feeder_ns.class_("VsonFeeder", cg.Component)
 
 CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
+            cv.GenerateID(): cv.declare_id(VsonFeeder),
             # Set to false to get LibreTiny's standard OTA image back, e.g. if
             # the stock bootloader has been replaced by a Beken/Tuya one.
             cv.Optional(CONF_STOCK_BOOTLOADER_OTA, default=True): cv.boolean,
@@ -48,20 +61,19 @@ async def to_code(config):
         cg.RawStatement('#include "esphome/components/vson_feeder/vson_feeder.h"')
     )
 
-    # PlatformIO extra scripts, run after LibreTiny's builder is set up. Collect
-    # them and register them in one option (a second call would overwrite it).
-    scripts = []
-    if config[CONF_STOCK_BOOTLOADER_OTA]:
-        scripts.append(OTA_SCRIPT)
-    if config[CONF_UNIQUE_MAC]:
-        scripts.append(MAC_SCRIPT)
+    # Instantiate the component so its dump_config() prints the diagnostic banner.
+    var = cg.new_Pvariable(config[CONF_ID])
+    await cg.register_component(var, config)
 
-    for script in scripts:
+    # Per-device MAC: add the link-time wrap flag (canonical, reaches the link).
+    if config[CONF_UNIQUE_MAC]:
+        cg.add_build_flag(MAC_WRAP_FLAG)
+        cg.add_define("VSON_UNIQUE_MAC")
+
+    # Stock-bootloader OTA image is produced by a PlatformIO post extra script.
+    if config[CONF_STOCK_BOOTLOADER_OTA]:
         copy_file_if_changed(
-            Path(__file__).parent / f"{script}.script",
-            CORE.relative_build_path(script),
+            Path(__file__).parent / f"{OTA_SCRIPT}.script",
+            CORE.relative_build_path(OTA_SCRIPT),
         )
-    if scripts:
-        cg.add_platformio_option(
-            "extra_scripts", [f"post:{script}" for script in scripts]
-        )
+        cg.add_platformio_option("extra_scripts", [f"post:{OTA_SCRIPT}"])

@@ -8,11 +8,18 @@
 #include "vson_feeder.h"
 
 #include <Arduino.h>
+#include <WiFi.h>
 #include <math.h>
 #include <sdk_private.h>
 
+#include "esphome/core/log.h"
+
 namespace esphome {
 namespace vson_feeder {
+
+static const char *const TAG = "vson_feeder";
+
+volatile uint32_t g_mac_hook_calls = 0;
 
 static const uint8_t FOOD_ADC_CHANNEL = 5;   // P22
 static const uint8_t FOOD_ADC_SAMPLES = 6;   // the stock firmware averages 6 readings
@@ -72,6 +79,26 @@ float read_food_sensor() {
   return (float) sum / count * 2.4f / 2048.0f;
 }
 
+float VsonFeeder::get_setup_priority() const { return setup_priority::LATE; }
+
+void VsonFeeder::dump_config() {
+  uint8_t mac[6] = {0};
+  // Same path ESPHome uses to print "Local MAC": core helpers -> WiFi.macAddress().
+  WiFi.macAddress(mac);
+
+  ESP_LOGCONFIG(TAG, "VSON feeder:");
+  ESP_LOGCONFIG(TAG, "  Component revision: %s", VSON_FEEDER_REV);
+#ifdef VSON_UNIQUE_MAC
+  ESP_LOGCONFIG(TAG, "  Per-device MAC: enabled");
+#else
+  ESP_LOGCONFIG(TAG, "  Per-device MAC: disabled");
+#endif
+  // 0 here means the link-time wrap did NOT take effect (stale/old build).
+  ESP_LOGCONFIG(TAG, "  MAC hook calls: %u", (unsigned) g_mac_hook_calls);
+  ESP_LOGCONFIG(TAG, "  Effective STA MAC: %02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1],
+                mac[2], mac[3], mac[4], mac[5]);
+}
+
 }  // namespace vson_feeder
 }  // namespace esphome
 
@@ -82,14 +109,15 @@ float read_food_sensor() {
 // has no unique hardware ID to derive one from (no eFuse MAC, no flash unique-ID
 // opcode). Several feeders on one network would therefore share a MAC.
 //
-// We build a stable, locally-administered MAC from the device's ESPHome name —
-// unique per feeder — so each unit keeps a distinct MAC across reboots with no
+// We build a stable, locally-administered MAC from the device's ESPHome name --
+// unique per feeder -- so each unit keeps a distinct MAC across reboots with no
 // storage. The hook is wifi_get_mac_address(): it is the function the Arduino
-// WiFi layer (and the SDK's own netif setup) call to read the MAC, and they
-// call it from other translation units, so -Wl,-wrap,wifi_get_mac_address
-// (added by vson_mac.py.script) does intercept it. Wrapping cfg_load_mac does
-// not work: wifi_get_mac_address calls it in the same file, and --wrap only
-// redirects cross-file references.
+// WiFi layer (WiFi.macAddress(), which ESPHome reads to print the "Local MAC")
+// and the SDK's own netif setup call to read the MAC, and they call it from
+// other translation units, so -Wl,-wrap,wifi_get_mac_address (added as a build
+// flag by __init__.py) does intercept it. Wrapping cfg_load_mac does not work:
+// wifi_get_mac_address calls it in the same file, and --wrap only redirects
+// cross-file references.
 // ---------------------------------------------------------------------------
 
 #include "esphome/core/application.h"
@@ -123,6 +151,8 @@ static void vson_build_mac(uint8_t out[6]) {
 }
 
 extern "C" void __wrap_wifi_get_mac_address(char *mac, uint8_t type) {
+  esphome::vson_feeder::g_mac_hook_calls++;
+
   uint8_t base[6];
   vson_build_mac(base);
 
