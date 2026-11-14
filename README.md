@@ -135,6 +135,9 @@ Sign in with the same **phone number or e-mail** and **password** you use in the
 
 Every entity publishes a stable `reef_role` state attribute (e.g. `online`, `food_shortage`, `feed`). This is the shared contract the ReefTech ecosystem uses: [ha-reef-card](https://github.com/Elwinmage/ha-reef-card) and the shared blueprints discover VSON entities through it, with no per-integration configuration.
 
+<p align="center"><img src="doc/img/ha-reef-card.png" width="70%" alt="The VSON WP8621 fish feeder in ha-reef-card" /></p>
+<p align="center"><em>The WP8621 feeder shown in <a href="https://github.com/Elwinmage/ha-reef-card">ha-reef-card</a>: next feeding, per-slot schedule and portions, and manual feed.</em></p>
+
 ## FAQ
 
 **Is this official?** No. It is an independent, interoperability-focused integration built from the public mobile app. Use your own account.

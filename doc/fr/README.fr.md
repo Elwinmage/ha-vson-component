@@ -45,6 +45,9 @@ Connectez-vous avec le **numéro de téléphone ou l'e-mail** et le **mot de pas
 
 Chaque entité publie un attribut d'état `reef_role` stable (`online`, `food_shortage`, `feed`, …). C'est le contrat partagé de l'écosystème ReefTech : [ha-reef-card](https://github.com/Elwinmage/ha-reef-card) et les blueprints le découvrent sans configuration côté carte.
 
+<p align="center"><img src="../img/ha-reef-card.png" width="70%" alt="Le distributeur VSON WP8621 dans ha-reef-card" /></p>
+<p align="center"><em>Le distributeur WP8621 vu dans <a href="https://github.com/Elwinmage/ha-reef-card">ha-reef-card</a> : prochaine distribution, horaires et portions par créneau, et distribution manuelle.</em></p>
+
 ## FAQ
 
 **Est-ce officiel ?** Non. Intégration indépendante d'interopérabilité, construite depuis l'application mobile publique. Utilisez votre propre compte.
