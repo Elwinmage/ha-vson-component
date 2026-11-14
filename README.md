@@ -15,6 +15,8 @@
 
 Control your VSON aquarium devices from Home Assistant through the VSON cloud API (`apis.myvsoncloud.com`). The WP8621 automatic fish feeder is fully supported; every other VSON device on your account is detected generically (online state + manual refresh), and new families are easy to add.
 
+> **Prefer no cloud?** The WP8621 feeder can instead be reflashed with local **ESPHome** firmware — same board, no chip swap, no cloud. Full procedure (UART first flash, then wireless updates), wiring and configuration: **[esphome/README.md](esphome/README.md)**.
+
 ---
 
 <!-- ecosystem:start -->
@@ -35,7 +37,7 @@ The ReefTech projects fit together: the integrations bring your equipment into H
   <tr>
     <td><img src="https://raw.githubusercontent.com/Elwinmage/ha-reefbeat-component/main/icon.png" width="64" alt="ha-reefbeat-component" /></td>
     <td>🐠<br /><a href="https://github.com/Elwinmage/ha-reefbeat-component"><b>ha-reefbeat-component</b></a></td>
-    <td>Red Sea ReefBeat devices, controlled locally with no cloud: ReefATO+, ReefControl, ReefControl-Power, ReefDose, ReefLed, ReefMat, ReefRun and ReefWave.</td>
+    <td>Red Sea ReefBeat devices, controlled locally with no cloud: ReefATO+, ReefControl, ReefControl-Power, ReefDose, ReefLed, ReefMat, ReefRun and ReefWave.<br />alert blueprint for abnormal modes, calibrations and low battery. <a href="https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://raw.githubusercontent.com/Elwinmage/ha-reefbeat-component/refs/heads/main/blueprints/automation/redsea_alerts.en.yaml"><img src="https://my.home-assistant.io/badges/blueprint_import.svg" alt="Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled." /></a></td>
     <td>ha-reef-card</td>
   </tr>
   <tr>
@@ -47,28 +49,48 @@ The ReefTech projects fit together: the integrations bring your equipment into H
   <tr>
     <td><img src="https://raw.githubusercontent.com/Elwinmage/ha-vson-component/main/icon.png" width="64" alt="ha-vson-component" /></td>
     <td>🐟<br /><b>ha-vson-component</b><br /><i>(this repository)</i></td>
-    <td>VSON devices through the VSON cloud API: WP8621 automatic fish feeder (feed now, battery, low-food alert), and generic detection of any other VSON device on the account.</td>
+    <td>VSON automatic fish feeders through the VSON cloud API: the WP8621 feeder (feed now, battery, low-food alert), plus generic detection of any other VSON device. The WP8621 can also run fully local on ESPHome.</td>
     <td>ha-reef-card</td>
   </tr>
   <tr>
     <td><img src="https://raw.githubusercontent.com/Elwinmage/ha-reef-maintenance-component/main/icon.png" width="64" alt="ha-reef-maintenance-component" /></td>
     <td>🐙<br /><a href="https://github.com/Elwinmage/ha-reef-maintenance-component"><b>ha-reef-maintenance-component</b></a></td>
-    <td>Cleaning and wear tracking for the equipment Home Assistant cannot talk to.</td>
+    <td>Cleaning and wear tracking for the equipment Home Assistant cannot talk to: flow pumps, return pumps, skimmers, media reactors, anything you service by hand.</td>
     <td>ha-reef-card</td>
   </tr>
   <tr>
     <td><img src="https://raw.githubusercontent.com/Elwinmage/ha-reef-card/main/icon.png" width="64" alt="ha-reef-card" /></td>
     <td>🪸<br /><a href="https://github.com/Elwinmage/ha-reef-card"><b>ha-reef-card</b></a></td>
-    <td>Interactive graphical view of each device on your dashboard. Reads the integrations through the shared <code>reef_role</code> contract, with no card-side configuration.</td>
-    <td>all integrations, and ha-reeftank-component for the aquarium</td>
+    <td>Interactive graphical view of each device on your dashboard, and the only way to edit advanced schedules. Reads the three integrations above through the shared <code>reef_role</code> contract, with no card-side configuration. Also draws the power flows of reefbeatEnergyBackup. Its aquarium card brings your tank to life with ha-reeftank-component.</td>
+    <td>all four integrations, and ha-reeftank-component for the aquarium</td>
   </tr>
   <tr>
     <td><img src="https://raw.githubusercontent.com/Elwinmage/ha-reeftank-component/main/icon.png" width="64" alt="ha-reeftank-component" /></td>
     <td>🐟<br /><a href="https://github.com/Elwinmage/ha-reeftank-component"><b>ha-reeftank-component</b></a></td>
-    <td>A living picture of your tank on the dashboard. Stores the aquariums and their livestock, records the feedings.</td>
+    <td>A living picture of your tank on the dashboard: your photo, lit by your real lamps, with animated fish and corals, and your devices and entities on it. Stores the aquariums and their livestock, records the feedings.</td>
     <td>ha-reef-card</td>
   </tr>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/Elwinmage/reeftank-catalog/main/icon.png" width="64" alt="reeftank-catalog" /></td>
+    <td>🐡<br /><a href="https://github.com/Elwinmage/reeftank-catalog"><b>reeftank-catalog</b></a></td>
+    <td>Fish, corals and textures of the aquarium card, downloaded and kept up to date by ha-reeftank-component.</td>
+    <td>ha-reeftank-component</td>
+  </tr>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/Elwinmage/ha-reef-blueprints/main/icon.png" width="64" alt="ha-reef-blueprints" /></td>
+    <td>🐬<br /><a href="https://github.com/Elwinmage/ha-reef-blueprints"><b>ha-reef-blueprints</b></a></td>
+    <td>Automation blueprints shared by the whole ecosystem: overdue maintenance found through the <code>reef_role</code> contract, devices that went unreachable, a periodic heater test and a relay watch. Eight languages.</td>
+    <td>all four integrations</td>
+  </tr>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/Elwinmage/reefbeatEnergyBackup/main/icon.png" width="64" alt="reefbeatEnergyBackup" /></td>
+    <td>⚡<br /><a href="https://github.com/Elwinmage/reefbeatEnergyBackup"><b>reefbeatEnergyBackup</b></a></td>
+    <td>Battery backup for power outages. A 24V LiFePO₄ pack driven by a Raspberry Pi, with pump speed degraded progressively according to the state of charge.</td>
+    <td>standalone, or alongside ha-reefbeat-component and ha-reef-card</td>
+  </tr>
 </table>
+
+All of them are documented together on the [ReefTech project page](https://elwinmage.github.io/reeftank/).
 
 <!-- ecosystem:end -->
 
@@ -119,7 +141,7 @@ Every entity publishes a stable `reef_role` state attribute (e.g. `online`, `foo
 
 **My feeder is not detected as a feeder.** Enable debug logging for `custom_components.vson` and open an issue with the device's `type` code — a new `DeviceFamily` can be mapped for it.
 
-**Does it work without the cloud?** No, this integration talks to the VSON cloud. A local-firmware (ESPHome) route for the WP8621 is a separate, hardware-level effort.
+**Does it work without the cloud?** This integration talks to the VSON cloud. If you want fully local control of the WP8621, reflash it with ESPHome instead — a separate, hardware-level route documented in **[esphome/README.md](esphome/README.md)** (local only, no cloud, keeps the original chip). The two approaches are independent: use the cloud integration here, *or* the ESPHome firmware.
 
 ## Development
 
