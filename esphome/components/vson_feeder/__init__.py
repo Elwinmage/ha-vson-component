@@ -1,3 +1,4 @@
+# pyright: reportMissingImports=false
 """Helpers for the VSON WP8621 fish feeder running on its original BK7231N.
 
 Adding ``vson_feeder:`` to a configuration:
@@ -11,7 +12,6 @@ Adding ``vson_feeder:`` to a configuration:
   ESPHome name, instead of LibreTiny's fixed default (see ``vson_mac.py.script``
   and ``__wrap_cfg_load_mac`` in ``vson_feeder.cpp``).
 """
-# pyright: reportMissingImports=false
 
 from pathlib import Path
 

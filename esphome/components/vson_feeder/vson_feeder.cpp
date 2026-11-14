@@ -82,15 +82,24 @@ float read_food_sensor() {
 // has no unique hardware ID to derive one from (no eFuse MAC, no flash unique-ID
 // opcode). Several feeders on one network would therefore share a MAC.
 //
-// With -Wl,-wrap,cfg_load_mac (added by vson_mac.py.script), the SDK's MAC
-// loader is routed here instead. We build a stable, locally-administered MAC
-// from the device's ESPHome name — which is unique per feeder — so each unit
-// keeps a distinct MAC across reboots without any storage.
+// We build a stable, locally-administered MAC from the device's ESPHome name —
+// unique per feeder — so each unit keeps a distinct MAC across reboots with no
+// storage. The hook is wifi_get_mac_address(): it is the function the Arduino
+// WiFi layer (and the SDK's own netif setup) call to read the MAC, and they
+// call it from other translation units, so -Wl,-wrap,wifi_get_mac_address
+// (added by vson_mac.py.script) does intercept it. Wrapping cfg_load_mac does
+// not work: wifi_get_mac_address calls it in the same file, and --wrap only
+// redirects cross-file references.
 // ---------------------------------------------------------------------------
 
 #include "esphome/core/application.h"
+#include <string.h>
 
-extern "C" void __wrap_cfg_load_mac(uint8_t *mac) {
+// Beken wifi roles (param_config.h)
+#define VSON_ROLE_AP  1
+#define VSON_ROLE_STA 2
+
+static void vson_build_mac(uint8_t out[6]) {
   const std::string &name = esphome::App.get_name();
 
   // FNV-1a over the name, then a second mixed pass for the last byte.
@@ -105,10 +114,26 @@ extern "C" void __wrap_cfg_load_mac(uint8_t *mac) {
     h2 += (uint8_t) c;
   }
 
-  mac[0] = 0x02;  // locally administered (bit 1), unicast (bit 0 clear)
-  mac[1] = (h1 >> 0) & 0xFF;
-  mac[2] = (h1 >> 8) & 0xFF;
-  mac[3] = (h1 >> 16) & 0xFF;
-  mac[4] = (h1 >> 24) & 0xFF;
-  mac[5] = h2 & 0xFF;
+  out[0] = 0x02;  // locally administered (bit 1), unicast (bit 0 clear)
+  out[1] = (h1 >> 0) & 0xFF;
+  out[2] = (h1 >> 8) & 0xFF;
+  out[3] = (h1 >> 16) & 0xFF;
+  out[4] = (h1 >> 24) & 0xFF;
+  out[5] = h2 & 0xFF;
+}
+
+extern "C" void __wrap_wifi_get_mac_address(char *mac, uint8_t type) {
+  uint8_t base[6];
+  vson_build_mac(base);
+
+  if (type == VSON_ROLE_AP) {
+    // Same AP/STA relation as the SDK: keep bytes 0..4 and the top of byte 5,
+    // flip the low bits (mask = NX_VIRT_DEV_MAX - 1, 4 virtual devices -> 0x03).
+    const uint8_t mask = 0x03;
+    uint8_t low = base[5];
+    memcpy(mac, base, 6);
+    mac[5] = (uint8_t) ((base[5] & ~mask) | ((low & mask) ^ mask));
+  } else {
+    memcpy(mac, base, 6);
+  }
 }

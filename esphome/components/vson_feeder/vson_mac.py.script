@@ -1,7 +1,9 @@
 # pylint: disable=E0602
 Import("env")  # noqa
 
-# Route the Beken SDK's MAC loader (cfg_load_mac) through the wrapper defined in
+# Route the SDK MAC reader (wifi_get_mac_address) through the wrapper defined in
 # vson_feeder.cpp, so each feeder gets a distinct, locally-administered MAC
-# instead of LibreTiny's fixed default. Harmless if the wrapper is absent.
-env.Append(LINKFLAGS=["-Wl,-wrap,cfg_load_mac"])
+# instead of LibreTiny's fixed default. That is the function the Arduino WiFi
+# layer calls, from another file, so --wrap intercepts it. Harmless if the
+# wrapper is absent.
+env.Append(LINKFLAGS=["-Wl,-wrap,wifi_get_mac_address"])
