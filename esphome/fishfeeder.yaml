@@ -1,0 +1,420 @@
+###############################################################################
+# VSON WP8621 fish feeder running ESPHome on its original BK7231N (BL2028N).
+# See README.md for the first UART flash and the wireless updates that follow.
+#
+# Board wiring, taken from the stock firmware:
+#   P15 / P17  motor H-bridge (forward = P15 high + P17 low, stop = both high)
+#   P7         trap switch, low while the trap is open (pull-up)
+#   P9         front button, low when pressed (pull-up)
+#   P23        IR emitter of the food level sensor (high = on)
+#   P22        IR receiver of the food level sensor (analog, ADC channel 5)
+#   P0 / P1    bi-color status LED (one pin red, one pin blue)
+#   P10 / P11  UART1 (flashing and logs)
+###############################################################################
+
+substitutions:
+  # Bi-color status LED. If the colors turn out swapped on your unit, just
+  # exchange these two pin numbers.
+  pin_led_blue: P1
+  pin_led_red: P0
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/Elwinmage/ha-vson-component
+      ref: main
+      path: esphome/components
+    components: [vson_feeder]
+
+vson_feeder:
+
+esphome:
+  name: fishfeeder
+  friendly_name: FishFeeder
+  # Lets ha-reef-card recognise the feeder: Home Assistant turns the project
+  # name into the manufacturer ("vson") and the model ("fish_feeder").
+  project:
+    name: "vson.fish_feeder"
+    version: "1.4.0"
+  platformio_options:
+    # The chip of this feeder has an all-zero flash encryption key, unlike
+    # Tuya modules. Build a plain (CRC-only) image instead of the Tuya-key
+    # encrypted one, otherwise the app cannot boot.
+    # Keep the quotes: an unquoted value is read as the integer 0.
+    board_build.bkcrypt_coeffs: "00000000000000000000000000000000"
+  on_boot:
+    priority: -10
+    then:
+      # Blink the blue LED until WiFi connects (covers the boot, too).
+      - light.turn_on:
+          id: led_blue
+          effect: "Blink"
+      - delay: 2s
+      # Trap left open: bring it back home in reverse, like the stock firmware.
+      # The trap sensor stops the motor once the trap is closed.
+      - if:
+          condition:
+            binary_sensor.is_on: open_close_sensor
+          then:
+            - output.turn_off: motor_in1
+            - output.turn_on: motor_in2
+            - script.execute: motor_watchdog
+      - logger.log:
+          format: "Hello Fish Feeder"
+
+bk72xx:
+  board: generic-bk7231n-qfn32-tuya
+  framework:
+    # LibreTiny prints on UART2 (P0/P1) by default, and those two pins drive
+    # the LEDs on this board. Move everything to UART1 (P10/P11).
+    uart_port: 1
+
+# Feeding state shared by every slot (not per-slot, so it stays here).
+globals:
+  - id: g_portion_count
+    type: int
+    restore_value: false
+    initial_value: '0'
+  - id: g_feeding_in_progress
+    type: int
+    restore_value: false
+    initial_value: '0'
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "Uw7YHFIm/i6VGFS4OqjA/OEAgFx0s6DbZHG1s0wNP+8="   # replace with your own: esphome will suggest one, or `openssl rand -base64 32`
+
+# Wireless updates are installed by the stock bootloader of the feeder: the
+# vson_feeder component builds the OTA image in the format it expects. After
+# an upload the feeder stays silent for about a minute while the bootloader
+# unpacks the new firmware; do not power it off meanwhile.
+ota:
+  - platform: esphome
+
+preferences:
+  flash_write_interval: 1s
+
+logger:
+  # Same pads as the ones used for flashing (see the uart_port note above)
+  hardware_uart: UART1
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: FishFeeder Fallback Hotspot
+    password: "8fN0qZLdya37"   # fallback hotspot password, change it
+  on_connect:
+    - light.turn_off: led_blue
+  on_disconnect:
+    - light.turn_on:
+        id: led_blue
+        effect: "Blink"
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+
+  - platform: sntp
+    id: sntp_time
+    timezone: "Europe/Paris"
+    servers:
+    - pool.ntp.org
+    - time.cloudflare.com
+    on_time:
+      - seconds: 0
+        minutes: 0
+        hours: 1
+        days_of_week: 1-7
+        then:
+            - switch.toggle: restart_switch
+
+captive_portal:
+
+###########################
+# FEEDING SLOTS
+# One include line per slot. Add or remove a line to change their number; the
+# slot body lives in slots/feed_slot.yaml.
+packages:
+  # Each slot is fetched from the repo and expanded with its number. Add or
+  # remove a block to change how many slots exist. While iterating on
+  # feed_slot.yaml in the repo, set refresh to 0s so a push is picked up at
+  # once, then put it back to 1d.
+  feed_slot_1:
+    <<: &slot_src
+      url: https://github.com/Elwinmage/ha-vson-component
+      ref: main
+      refresh: 1d
+    files: [{ path: esphome/slots/feed_slot.yaml, vars: { slot: "1" } }]
+  feed_slot_2:
+    <<: *slot_src
+    files: [{ path: esphome/slots/feed_slot.yaml, vars: { slot: "2" } }]
+  feed_slot_3:
+    <<: *slot_src
+    files: [{ path: esphome/slots/feed_slot.yaml, vars: { slot: "3" } }]
+  feed_slot_4:
+    <<: *slot_src
+    files: [{ path: esphome/slots/feed_slot.yaml, vars: { slot: "4" } }]
+  feed_slot_5:
+    <<: *slot_src
+    files: [{ path: esphome/slots/feed_slot.yaml, vars: { slot: "5" } }]
+
+###########################
+# OUTPUTS
+output:
+  # Motor H-bridge
+  - platform: gpio
+    id: motor_in1
+    pin: P15
+  - platform: gpio
+    id: motor_in2
+    pin: P17
+  # IR emitter of the food level sensor, only powered while measuring
+  - platform: gpio
+    id: ir_emitter
+    pin: P23
+  # Bi-color status LED
+  - platform: gpio
+    id: led_blue_output
+    pin: ${pin_led_blue}
+  - platform: gpio
+    id: led_red_output
+    pin: ${pin_led_red}
+
+###########################
+# LEDS
+light:
+  # Blue: blinks while WiFi is disconnected (boot included), off once connected.
+  - platform: binary
+    id: led_blue
+    output: led_blue_output
+    restore_mode: ALWAYS_OFF
+    effects:
+      - strobe:
+          name: "Blink"
+          colors:
+            - state: true
+              duration: 300ms
+            - state: false
+              duration: 300ms
+  # Red: blinks while food is missing, off otherwise.
+  - platform: binary
+    id: led_red
+    output: led_red_output
+    restore_mode: ALWAYS_OFF
+    effects:
+      - strobe:
+          name: "Blink"
+          colors:
+            - state: true
+              duration: 300ms
+            - state: false
+              duration: 1700ms
+
+###########################
+# SCRIPTS
+script:
+  # Safety net: never leave the motor running if the trap sensor does not
+  # report a closed trap (the stock firmware gives up after 45 s as well).
+  - id: motor_watchdog
+    mode: restart
+    then:
+      - delay: 45s
+      - logger.log:
+          level: WARN
+          format: "Trap still not closed after 45 s, motor stopped"
+      - switch.turn_off: motor_switch
+
+  # One reading of the food level sensor, emitter on for half a second
+  - id: food_sensor_measure
+    mode: single
+    then:
+      - output.turn_on: ir_emitter
+      - delay: 500ms
+      - lambda: |-
+          float voltage = vson_feeder::read_food_sensor();
+          if (!std::isnan(voltage)) {
+            id(food_sensor_voltage).publish_state(voltage);
+          }
+      - output.turn_off: ir_emitter
+
+interval:
+  - interval: 10s
+    then:
+      - script.execute: food_sensor_measure
+
+###########################
+# SENSORS
+sensor:
+  - platform: uptime
+    name: "System - Uptime"
+
+  # Raw level of the food sensor: high when the hopper is empty (the light
+  # goes through), lower when food hides the receiver. The scale is the one
+  # LibreTiny uses for this chip (2048 ADC counts for 2.4 V).
+  - platform: template
+    id: food_sensor_voltage
+    name: "Food Sensor Voltage"
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+    accuracy_decimals: 2
+    entity_category: diagnostic
+    update_interval: never
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "System - IP Address"
+
+###########################
+# BINARY SENSORS
+binary_sensor:
+  # Trap switch: pressed (low) while the trap is open, released once closed
+  - platform: gpio
+    pin:
+      number: P7
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    name: "Open-Close Sensor"
+    id: open_close_sensor
+    device_class: door
+    filters:
+      - delayed_on_off: 2s
+    on_state_change:
+      then:
+        - if :
+            condition :
+              binary_sensor.is_off: open_close_sensor
+            then:
+              - switch.turn_off: motor_switch
+
+  # Food level: the receiver sees the emitter when the hopper is empty, so a
+  # voltage above the threshold means that food is missing.
+  - platform: template
+    name: "Food Level Sensor"
+    id: food_level_sensor
+    device_class: problem
+    icon: "mdi:alert"
+    lambda: |-
+      if (std::isnan(id(food_sensor_voltage).state)) {
+        return {};
+      }
+      return id(food_sensor_voltage).state > id(food_sensor_threshold).state;
+    filters:
+      - delayed_on_off: !lambda "return (uint32_t) (id(food_sensor_delay).state * 1000);"
+    on_state:
+      then:
+        - if:
+            condition:
+              binary_sensor.is_on: food_level_sensor
+            then:
+              - light.turn_on:
+                  id: led_red
+                  effect: "Blink"
+            else:
+              - light.turn_off: led_red
+
+  # Front button: one press gives a portion, or stops the motor if it runs
+  - platform: gpio
+    pin:
+      number: P9
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    id: feed_button
+    filters:
+      - delayed_on_off: 30ms
+    on_click:
+      min_length: 30ms
+      max_length: 1s
+      then:
+        - switch.toggle: motor_switch
+
+###########################
+# NUMBER
+# The per-slot "Portion slot N" numbers are added by the packages above.
+number:
+  # Food is reported missing above this voltage. The default is the value the
+  # stock firmware had stored for this unit (1362 ADC counts, same scale).
+  - platform: template
+    id: food_sensor_threshold
+    name: "Food Sensor Threshold"
+    icon: "mdi:tune-vertical"
+    entity_category: config
+    unit_of_measurement: "V"
+    mode: box
+    min_value: 0.2
+    max_value: 5
+    step: 0.01
+    optimistic: true
+    restore_value: true
+    initial_value: 1.6
+  # Debounce for the food shortage alarm: the level must stay past the
+  # threshold this long before the alarm arms or clears. The measurement runs
+  # every 10 s, so values below that just mean "confirm on the next reading".
+  - platform: template
+    id: food_sensor_delay
+    name: "Food Sensor Delay"
+    icon: "mdi:timer-cog"
+    entity_category: config
+    unit_of_measurement: "s"
+    mode: slider
+    min_value: 3
+    max_value: 30
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 25
+
+###########################
+# BUTTONS
+button:
+  # To press with an empty hopper: the threshold becomes two thirds of the
+  # reading, the rule the stock firmware uses for its own calibration.
+  - platform: template
+    name: "Food Sensor Calibration"
+    icon: "mdi:tune"
+    entity_category: config
+    on_press:
+      - script.execute: food_sensor_measure
+      - script.wait: food_sensor_measure
+      - lambda: |-
+          float voltage = id(food_sensor_voltage).state;
+          if (std::isnan(voltage) || voltage < 0.35f) {
+            ESP_LOGW("feeder", "Food sensor calibration failed (%.2f V)", voltage);
+            return;
+          }
+          auto call = id(food_sensor_threshold).make_call();
+          call.set_value(roundf(voltage * 200.0f / 3.0f) / 100.0f);
+          call.perform();
+
+###########################
+# SWITCHES
+switch:
+  # Motor: forward while on, braked (both inputs high) while off
+  - platform: template
+    id: motor_switch
+    name: "Manual Feed"
+    icon: mdi:pinwheel
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    turn_on_action:
+      - output.turn_on: motor_in1
+      - output.turn_off: motor_in2
+      - script.execute: motor_watchdog
+    turn_off_action:
+      - script.stop: motor_watchdog
+      - output.turn_on: motor_in1
+      - output.turn_on: motor_in2
+
+  - platform: restart
+    name: "System - Restart"
+    id: restart_switch
+
+  - platform: safe_mode
+    name: "System - Safe mode"
