@@ -1,0 +1,53 @@
+###############################################################################
+# One feeding slot of the VSON feeder.
+#
+# Included once per slot from the main file through `packages:`, with ${slot}
+# set to the slot number. To change how many slots exist, add or remove an
+# include line there — nothing to edit here.
+#
+# The entity names are the ones ha-reef-card looks for ("Slot N" and
+# "Portion slot N"), so keep them if you use that card.
+###############################################################################
+
+datetime:
+  - platform: template
+    time_id: homeassistant_time
+    name: "Slot ${slot}"
+    id: feed_slot_${slot}
+    type: TIME
+    optimistic: true
+    # Persisted on the chip, so the slot survives a reboot without the globals
+    # and the on_boot restore the previous version needed.
+    restore_value: true
+    on_time:
+      - if:
+          condition:
+            - lambda: "return id(food_portion_slot_${slot}).state > 0;"
+            - lambda: "return id(g_feeding_in_progress) == 0;"
+          then:
+            - lambda: "id(g_feeding_in_progress) = 1;"
+            - lambda: "id(g_portion_count) = (int) id(food_portion_slot_${slot}).state;"
+            - while:
+                condition:
+                  - lambda: "return id(g_portion_count) > 0;"
+                then:
+                  - lambda: "id(g_portion_count) -= 1;"
+                  - logger.log:
+                      format: "Slot ${slot}: %d portion(s) left to give"
+                      args: ['id(g_portion_count)']
+                  - switch.turn_on: motor_switch
+                  - delay: 30s
+            - lambda: "id(g_feeding_in_progress) = 0;"
+
+number:
+  - platform: template
+    id: food_portion_slot_${slot}
+    name: "Portion slot ${slot}"
+    icon: "mdi:shaker"
+    step: 1
+    min_value: 0
+    max_value: 10
+    # Optimistic + restore_value: the value shows at once in Home Assistant and
+    # is kept across reboots, again replacing the old global + on_boot restore.
+    optimistic: true
+    restore_value: true
