@@ -1,0 +1,134 @@
+# pylint: disable=E0602
+Import("env")  # noqa
+
+# OTA image for the stock bootloader of the VSON WP8621 feeder (BK7231n_1.0.13).
+#
+# LibreTiny normally puts an RBL package in the "download" partition and lets
+# a Beken/Tuya bootloader install it. The bootloader of this feeder does not
+# know that format: the upload succeeds but the old firmware keeps booting.
+# What it does understand is its own mechanism:
+#
+#   - a 16-byte header at flash offset 0x10000:
+#       uint32 dst    where to install (the app partition)
+#       uint32 src    where the compressed image is
+#       uint32 size   size of the compressed image
+#       uint16 crc    CRC-16/XMODEM of the compressed image
+#       uint16 flag   0xA55A
+#   - at src, an XZ stream (CRC32 check, LZMA2 dictionary of 32 KiB at most)
+#     of the app image exactly as it is stored in flash (CRC16-framed).
+#
+# At boot it checks the CRC, unpacks the image over the app partition, reads
+# it back, then erases the header. A power cut in the middle is harmless: the
+# header is still there, so the next boot starts over.
+#
+# This script replaces the device part of firmware.uf2 with that format. The
+# flasher part (UART) is left untouched. The header is the very last block of
+# the file: ESPHome holds the last byte of an upload back until the MD5 of
+# the whole transfer is verified, so the update is only armed once the upload
+# is known to be complete and intact.
+
+import struct
+from os.path import basename
+
+try:
+    import lzma
+except ImportError:  # Python built without liblzma
+    lzma = None
+
+OTA_HEADER_ADDRESS = 0x10000
+OTA_FLAG_XZ = 0xA55A
+XZ_DICT_SIZE = 32 * 1024
+# LibreTiny only accepts the end of an OTA if "download" starts with "RBL\0"
+# (lt_ota_is_valid). The bootloader does not care, src points past this.
+DOWNLOAD_PREFIX = (b"RBL\x00" + b"VSON XZ OTA").ljust(32, b"\x00")
+
+XZ_FILE = "${BUILD_DIR}/image_${MCULC}_app.ota.vson.xz"
+HEADER_FILE = "${BUILD_DIR}/image_${MCULC}_app.ota.vson.hdr"
+
+
+def crc16_xmodem(data):
+    crc = 0
+    for byte in data:
+        crc ^= byte << 8
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
+    return crc
+
+
+def find_app_image(entries):
+    # "<path>.crc=flasher:app" is the app image as written to flash
+    for entry in entries:
+        if not entry:
+            continue
+        source, _, target = entry.rpartition("=")
+        if target == "flasher:app" and source.endswith(".crc"):
+            return source
+    return None
+
+
+def build_ota_image(target, source, env):
+    app_offset = int(env["FLASH_APP_OFFSET"], 16)
+    download_offset = int(env["FLASH_DOWNLOAD_OFFSET"], 16)
+    download_length = int(env["FLASH_DOWNLOAD_LENGTH"], 16)
+
+    with open(env.subst(app_image), "rb") as f:
+        image = f.read()
+    if app_offset + len(image) > download_offset:
+        raise RuntimeError("VSON OTA: the app image overlaps the download partition")
+
+    xz = lzma.compress(
+        image,
+        format=lzma.FORMAT_XZ,
+        check=lzma.CHECK_CRC32,
+        filters=[
+            {
+                "id": lzma.FILTER_LZMA2,
+                "preset": 9 | lzma.PRESET_EXTREME,
+                "dict_size": XZ_DICT_SIZE,
+            }
+        ],
+    )
+    if len(DOWNLOAD_PREFIX) + len(xz) > download_length:
+        raise RuntimeError("VSON OTA: the compressed image does not fit the download partition")
+
+    header = struct.pack(
+        "<IIIHH",
+        app_offset,
+        download_offset + len(DOWNLOAD_PREFIX),
+        len(xz),
+        crc16_xmodem(xz),
+        OTA_FLAG_XZ,
+    )
+    with open(env.subst(XZ_FILE), "wb") as f:
+        f.write(DOWNLOAD_PREFIX + xz)
+    with open(env.subst(HEADER_FILE), "wb") as f:
+        f.write(header)
+    print(
+        "VSON OTA: %s -> %d bytes of XZ (%d%%), installed by the stock bootloader"
+        % (basename(env.subst(app_image)), len(xz), 100 * len(xz) // len(image))
+    )
+
+
+entries = env.get("UF2OTA")
+app_image = find_app_image(entries) if isinstance(entries, list) else None
+bootloader_offset = int(env.get("FLASH_BOOTLOADER_OFFSET", "0"), 16)
+bootloader_length = int(env.get("FLASH_BOOTLOADER_LENGTH", "0"), 16)
+header_offset = OTA_HEADER_ADDRESS - bootloader_offset
+
+if app_image is None:
+    # e.g. an upload-only run, where LibreTiny does not build the UF2
+    print("VSON OTA: no app image to pack in this run")
+elif lzma is None:
+    print("VSON OTA: this Python has no lzma module, OTA image left unchanged")
+elif not 0 <= header_offset < bootloader_length:
+    print("VSON OTA: unexpected flash layout, OTA image left unchanged")
+else:
+    # keep what the UART flasher writes, replace what the device writes
+    entries[:] = [e for e in entries if e and not e.rpartition("=")[2].startswith("device:")]
+    entries.append(XZ_FILE + "=device:download")
+    # must stay the last entry (see above)
+    entries.append(HEADER_FILE + "+%d=device:bootloader" % header_offset)
+    env.AddPreAction(
+        "${BUILD_DIR}/firmware.uf2",
+        env.VerboseAction(build_ota_image, "Building VSON OTA image"),
+    )
