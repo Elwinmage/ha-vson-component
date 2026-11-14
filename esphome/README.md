@@ -128,13 +128,28 @@ running and the install simply restarts on the next boot.
 
 ## Status LED
 
-A single bi-color LED (pins P0/P1):
+The feeder has one **bi-color LED** (red / blue) on pins P0/P1. From power-on to
+running, the normal sequence is:
 
-- **Blue** blinks while WiFi is disconnected (boot included), steady once connected.
-- **Red** blinks while food is missing, off otherwise.
+| LED | Meaning |
+|---|---|
+| **Red**, a few seconds | The **stock bootloader** is copying/unpacking the firmware (right after a wireless update), or it is the LED's default state at power-on. This is the bootloader, not the app — **do not cut power here.** |
+| **Blue** blinking, then briefly steady | The application has booted — the on-boot routine runs for ~2 s. |
+| **Blue** blinking | Connecting to WiFi, *or* WiFi lost — it keeps blinking until it (re)connects. |
+| **Blue** steady | Connected to WiFi / Home Assistant. |
+| **Red** blinking | **Food missing** — the level sensor stayed past the threshold longer than the alarm delay. Clears by itself once food is detected again. |
 
-If the colors are swapped on your unit, exchange `pin_led_blue` and
-`pin_led_red` at the top of `fishfeeder.yaml`.
+Notes:
+
+- In the application, **red means the food-level alarm only.** A red flash while
+  a portion is being dispensed is the sensor briefly reading "no food" (hopper
+  low, or the IR beam momentarily clear during the drop), not a dedicated
+  "feeding in progress" indicator.
+- The very first red at power-on happens before the app takes over the LED
+  (and, after an update, while the bootloader unpacks the image) — it is
+  expected, not a fault.
+- If the colors are swapped on your unit, exchange `pin_led_blue` and
+  `pin_led_red` at the top of `fishfeeder.yaml`.
 
 ## Food level: calibration and alarm
 
@@ -173,10 +188,23 @@ MAC from the device's ESPHome **name** and applies it. So give each feeder a
 own MAC, the same across reboots. Check it in the boot log:
 
 ```
-[wifi] MAC Address: 02:…
+[wifi] Local MAC: 02:…
 ```
 
-Set `unique_mac: false` under `vson_feeder:` to keep LibreTiny's default.
+At boot the component also logs a short banner so you can confirm the build and
+the MAC hook took effect:
+
+```
+[vson_feeder] VSON feeder:
+[vson_feeder]   Component revision: 1.5.0
+[vson_feeder]   Per-device MAC: enabled
+[vson_feeder]   MAC hook calls: 1
+[vson_feeder]   Effective STA MAC: 02:…
+```
+
+`MAC hook calls: 0` would mean an old/cached build is still running (the wrap
+was not linked in). Set `unique_mac: false` under `vson_feeder:` to keep
+LibreTiny's default.
 
 ## Hardware wiring (motor, sensors)
 
