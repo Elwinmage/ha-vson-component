@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from custom_components.vson.const import FEED_MODE_FEED_MAC
-from custom_components.vson.devices import (
+from custom_components.vson_cloud.const import FEED_MODE_FEED_MAC
+from custom_components.vson_cloud.devices import (
     CAP_FEED,
     CAP_ONLINE,
     GENERIC_FAMILY,

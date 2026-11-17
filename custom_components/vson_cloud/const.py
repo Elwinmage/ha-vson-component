@@ -13,7 +13,7 @@ from datetime import timedelta
 _LOGGER = logging.getLogger(__package__)
 
 # ── Integration identity ──────────────────────────────────────────────────────
-DOMAIN = "vson"
+DOMAIN = "vson_cloud"
 MANUFACTURER = "VSON"
 
 # GitHub repository, used to pre-fill a "new issue" link for unknown devices.

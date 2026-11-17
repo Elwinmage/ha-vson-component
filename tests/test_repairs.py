@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from homeassistant.helpers import issue_registry as ir
 
-from custom_components.vson.const import DOMAIN
-from custom_components.vson.repairs import (
+from custom_components.vson_cloud.const import DOMAIN
+from custom_components.vson_cloud.repairs import (
     UnknownDeviceRepairFlow,
     async_create_fix_flow,
     async_reconcile_unknown_devices,
@@ -52,7 +52,7 @@ async def test_fix_flow_confirm_dismisses(hass):
 async def test_coordinator_raises_issue_for_generic_device(hass):
     from unittest.mock import AsyncMock, MagicMock
 
-    from custom_components.vson.coordinator import VsonCoordinator
+    from custom_components.vson_cloud.coordinator import VsonCoordinator
 
     from .conftest import MOCK_GENERIC_DEVICE
 

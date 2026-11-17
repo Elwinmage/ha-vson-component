@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from custom_components.vson import const
+from custom_components.vson_cloud import const
 
 
 def test_domain():
-    assert const.DOMAIN == "vson"
+    assert const.DOMAIN == "vson_cloud"
 
 
 def test_base_url_is_production_host():

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from custom_components.vson import crypto
-from custom_components.vson.client import VsonApiError, VsonAuthError, VsonClient
+from custom_components.vson_cloud import crypto
+from custom_components.vson_cloud.client import VsonApiError, VsonAuthError, VsonClient
 
 
 class _FakeResponse:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from custom_components.vson import crypto
+from custom_components.vson_cloud import crypto
 
 
 def test_header_constants_match_app():

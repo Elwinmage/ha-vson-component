@@ -7,7 +7,7 @@ from unittest.mock import patch
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.vson.const import (
+from custom_components.vson_cloud.const import (
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
     CONF_USERNAME,
@@ -19,7 +19,7 @@ from .conftest import MOCK_CONFIG_ENTRY_DATA, MOCK_PASSWORD, MOCK_USERNAME
 
 async def test_user_flow_success(hass, register_config_flow):
     with patch(
-        "custom_components.vson.config_flow._validate",
+        "custom_components.vson_cloud.config_flow._validate",
         return_value=("RAWTOKEN", None),
     ):
         result = await hass.config_entries.flow.async_init(
@@ -37,7 +37,7 @@ async def test_user_flow_success(hass, register_config_flow):
 
 async def test_user_flow_invalid_auth(hass, register_config_flow):
     with patch(
-        "custom_components.vson.config_flow._validate",
+        "custom_components.vson_cloud.config_flow._validate",
         return_value=(None, "invalid_auth"),
     ):
         result = await hass.config_entries.flow.async_init(
@@ -78,7 +78,7 @@ async def test_reauth_flow(hass, register_config_flow):
     assert result["type"] == FlowResultType.FORM
     with (
         patch(
-            "custom_components.vson.config_flow._validate",
+            "custom_components.vson_cloud.config_flow._validate",
             return_value=("NEWTOKEN", None),
         ),
         patch(

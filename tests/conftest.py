@@ -8,16 +8,16 @@ import pytest
 from homeassistant import loader
 from homeassistant.config_entries import HANDLERS
 
-from custom_components.vson.config_flow import VsonConfigFlow
-from custom_components.vson.const import (
+from custom_components.vson_cloud.config_flow import VsonConfigFlow
+from custom_components.vson_cloud.const import (
     CONF_PASSWORD,
     CONF_SCAN_INTERVAL,
     CONF_USERNAME,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
-from custom_components.vson.coordinator import VsonCoordinator
-from custom_components.vson.devices import VsonDevice
+from custom_components.vson_cloud.coordinator import VsonCoordinator
+from custom_components.vson_cloud.devices import VsonDevice
 
 # ── Shared test data ──────────────────────────────────────────────────────────
 

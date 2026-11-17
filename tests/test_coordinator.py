@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from custom_components.vson.coordinator import VsonCoordinator
-from custom_components.vson.devices import WP8621A_FAMILY
+from custom_components.vson_cloud.coordinator import VsonCoordinator
+from custom_components.vson_cloud.devices import WP8621A_FAMILY
 
 from .conftest import MOCK_DID
 
@@ -25,7 +25,7 @@ async def test_feed_now_uses_feed_mac_for_wp8621a(coordinator, mock_client):
 
 
 async def test_feed_now_uses_feed_mac_for_base_wp8621(hass, mock_client):
-    from custom_components.vson.devices import VsonDevice
+    from custom_components.vson_cloud.devices import VsonDevice
 
     coord = VsonCoordinator(hass, mock_client, scan_interval=30)
     coord.async_request_refresh = __import__(

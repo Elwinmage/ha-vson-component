@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from custom_components.vson.binary_sensor import (
+from custom_components.vson_cloud.binary_sensor import (
     BINARY_DESCRIPTIONS,
     VsonBinarySensor,
 )
-from custom_components.vson.button import FEED_DESCRIPTION, VsonFeedButton
-from custom_components.vson.devices import VsonDevice
-from custom_components.vson.sensor import SENSOR_DESCRIPTIONS, VsonSensor
-from custom_components.vson.switch import VsonScheduleSwitch
+from custom_components.vson_cloud.button import FEED_DESCRIPTION, VsonFeedButton
+from custom_components.vson_cloud.devices import VsonDevice
+from custom_components.vson_cloud.sensor import SENSOR_DESCRIPTIONS, VsonSensor
+from custom_components.vson_cloud.switch import VsonScheduleSwitch
 
 from .conftest import MOCK_DID
 
@@ -33,9 +33,9 @@ async def test_battery_sensor_skipped_when_absent(hass, mock_client):
     """A mains-powered feeder (no 'battery' field) gets no battery sensor."""
     from unittest.mock import AsyncMock
 
-    from custom_components.vson import sensor as sensor_platform
-    from custom_components.vson.coordinator import VsonCoordinator
-    from custom_components.vson.devices import VsonDevice
+    from custom_components.vson_cloud import sensor as sensor_platform
+    from custom_components.vson_cloud.coordinator import VsonCoordinator
+    from custom_components.vson_cloud.devices import VsonDevice
 
     coord = VsonCoordinator(hass, mock_client, scan_interval=30)
     coord.data = {
@@ -44,7 +44,7 @@ async def test_battery_sensor_skipped_when_absent(hass, mock_client):
             home={"version": "WP8621NK_04", "isMaterial": "1"},  # no battery
         )
     }
-    hass.data["vson"] = {"e": coord}
+    hass.data["vson_cloud"] = {"e": coord}
     entry = AsyncMock(entry_id="e")
     added: list = []
     await sensor_platform.async_setup_entry(hass, entry, lambda es: added.extend(es))

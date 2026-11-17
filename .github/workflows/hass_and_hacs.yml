@@ -59,7 +59,7 @@ jobs:
           fi
 
           # Installation des dépendances du manifest
-          python -c "import json; print('\n'.join(json.load(open('custom_components/vson/manifest.json'))['requirements']))" > requirements_manifest.txt
+          python -c "import json; print('\n'.join(json.load(open('custom_components/vson_cloud/manifest.json'))['requirements']))" > requirements_manifest.txt
           pip install -r requirements_manifest.txt
 
       - name: Run Pytest

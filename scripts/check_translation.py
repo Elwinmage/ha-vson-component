@@ -21,7 +21,7 @@ from colorama import Fore, Style
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
-BASE_PATH = os.path.join(REPO_ROOT, "custom_components", "vson")
+BASE_PATH = os.path.join(REPO_ROOT, "custom_components", "vson_cloud")
 TRANSLATIONS_PATH = os.path.join(BASE_PATH, "translations")
 STRINGS_FILE = os.path.join(BASE_PATH, "strings.json")
 

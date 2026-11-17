@@ -25,7 +25,7 @@ repos:
         name: hassfest
         entry: env PYTHONPATH=/usr/src/ha-hassfest:/usr/src/ha-hassfest/packages/hassfest python3 -m script.hassfest
         language: system
-        args: ["--integration-path", "custom_components/vson"]
+        args: ["--integration-path", "custom_components/vson_cloud"]
         pass_filenames: false
         always_run: true
 
@@ -62,7 +62,7 @@ repos:
 
       - id: pytest
         name: pytest (-q)
-        entry: pytest -q --cov=custom_components.vson --cov-report=xml:reports/coverage.xml --cov-report=term-missing --cov-report=html:reports/htmlcov
+        entry: pytest -q --cov=custom_components.vson_cloud --cov-report=xml:reports/coverage.xml --cov-report=term-missing --cov-report=html:reports/htmlcov
         language: python
         always_run: true
         pass_filenames: false
