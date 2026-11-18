@@ -4,6 +4,8 @@
   <img src="../../icon.png"  width="50%"/>
 </p>
 
+![Installations](https://img.shields.io/badge/dynamic/json?label=Installations%20actives&query=estimated&url=https%3A%2F%2Fraw.githubusercontent.com%2FElwinmage%2Fha-vson-component%2Fmain%2Fbadges%2Fstats.json&color=CE1126&logo=home-assistant)
+
 # Langues : [<img src="https://flagicons.lipis.dev/flags/4x3/gb.svg" width="5%"/>](https://github.com/Elwinmage/ha-vson-component/blob/main/README.md) [<img src="https://flagicons.lipis.dev/flags/4x3/fr.svg" width="5%"/>](https://github.com/Elwinmage/ha-vson-component/blob/main/doc/fr/README.fr.md)
 
 Pilotez vos appareils aquariophiles VSON depuis Home Assistant via le cloud VSON (`apis.myvsoncloud.com`). Le distributeur automatique **WP8621** est entièrement pris en charge ; tout autre appareil VSON du compte est détecté de façon générique (état en ligne + rafraîchissement manuel), et de nouvelles familles s'ajoutent facilement.
@@ -15,7 +17,7 @@ Pilotez vos appareils aquariophiles VSON depuis Home Assistant via le cloud VSON
 | **Distributeur WP8621** (variantes N/E/H/F/B/P/A/C) | `8621` | Nourrir maintenant (bouton), Batterie (%), Micrologiciel, Manque de nourriture (problème), En ligne, Distribution programmée (interrupteur), Rafraîchir |
 | **Tout autre appareil VSON** | *détecté* | En ligne, Rafraîchir |
 
-Le feeder utilise les endpoints `Bley` du cloud. On ajoute d'autres familles dans `custom_components/vson/devices.py` en déclarant un nouveau `DeviceFamily` ; aucune modification des plateformes n'est nécessaire.
+Le feeder utilise les endpoints `Bley` du cloud. On ajoute d'autres familles dans `custom_components/vson_cloud/devices.py` en déclarant un nouveau `DeviceFamily` ; aucune modification des plateformes n'est nécessaire.
 
 ## Fonctionnement
 
@@ -35,7 +37,7 @@ Tout passe par de simples requêtes HTTPS POST vers `apis.myvsoncloud.com`, rét
 
 ### Manuelle
 
-Copiez `custom_components/vson` dans `config/custom_components/` puis redémarrez.
+Copiez `custom_components/vson_cloud` dans `config/custom_components/` puis redémarrez.
 
 ## Configuration
 
@@ -52,6 +54,6 @@ Chaque entité publie un attribut d'état `reef_role` stable (`online`, `food_sh
 
 **Est-ce officiel ?** Non. Intégration indépendante d'interopérabilité, construite depuis l'application mobile publique. Utilisez votre propre compte.
 
-**Mon feeder n'est pas détecté comme tel.** Activez les logs de debug pour `custom_components.vson` et ouvrez une issue avec le code `type` de l'appareil — une nouvelle `DeviceFamily` pourra lui être associée.
+**Mon feeder n'est pas détecté comme tel.** Activez les logs de debug pour `custom_components.vson_cloud` et ouvrez une issue avec le code `type` de l'appareil — une nouvelle `DeviceFamily` pourra lui être associée.
 
 **Ça marche sans le cloud ?** Non, cette intégration parle au cloud VSON. La piste firmware local (ESPHome) pour le WP8621 est un chantier matériel distinct.

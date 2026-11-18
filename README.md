@@ -10,6 +10,7 @@
 [![HA & HACS Validation](https://github.com/Elwinmage/ha-vson-component/actions/workflows/hass_and_hacs.yml/badge.svg)](https://github.com/Elwinmage/ha-vson-component/actions/workflows/hass_and_hacs.yml)
 [![Coverage](https://raw.githubusercontent.com/Elwinmage/ha-vson-component/main/badges/coverage.svg)](https://app.codecov.io/gh/Elwinmage/ha-vson-component)
 [![GH-code-size](https://img.shields.io/github/languages/code-size/Elwinmage/ha-vson-component.svg?color=red&style=flat-square)](https://github.com/Elwinmage/ha-vson-component)
+![Installations](https://img.shields.io/badge/dynamic/json?label=Active%20Installs&query=estimated&url=https%3A%2F%2Fraw.githubusercontent.com%2FElwinmage%2Fha-vson-component%2Fmain%2Fbadges%2Fstats.json&color=CE1126&logo=home-assistant)
 
 # Supported Languages: [<img src="https://flagicons.lipis.dev/flags/4x3/gb.svg" width="5%"/>](https://github.com/Elwinmage/ha-vson-component/blob/main/README.md) [<img src="https://flagicons.lipis.dev/flags/4x3/fr.svg" width="5%"/>](https://github.com/Elwinmage/ha-vson-component/blob/main/doc/fr/README.fr.md)
 
@@ -103,7 +104,7 @@ All of them are documented together on the [ReefTech project page](https://elwin
 | **WP8621 automatic fish feeder** (variants N/E/H/F/B/P/A/C) | `8621` | Feed now (button), Battery (%), Firmware, Food shortage (problem), Online, Scheduled feeding (switch), Refresh |
 | **Any other VSON device** | *detected* | Online, Refresh |
 
-The feeder is driven by the cloud's `Bley` endpoints. Other families are added in `custom_components/vson/devices.py` by declaring a new `DeviceFamily`; no change to the platforms is needed.
+The feeder is driven by the cloud's `Bley` endpoints. Other families are added in `custom_components/vson_cloud/devices.py` by declaring a new `DeviceFamily`; no change to the platforms is needed.
 
 ## How it works
 
@@ -125,7 +126,7 @@ No credentials or tokens ever leave your Home Assistant instance except toward t
 
 ### Manual
 
-Copy `custom_components/vson` into your Home Assistant `config/custom_components/` folder and restart.
+Copy `custom_components/vson_cloud` into your Home Assistant `config/custom_components/` folder and restart.
 
 ## Configuration
 
@@ -142,7 +143,7 @@ Every entity publishes a stable `reef_role` state attribute (e.g. `online`, `foo
 
 **Is this official?** No. It is an independent, interoperability-focused integration built from the public mobile app. Use your own account.
 
-**My feeder is not detected as a feeder.** Enable debug logging for `custom_components.vson` and open an issue with the device's `type` code — a new `DeviceFamily` can be mapped for it.
+**My feeder is not detected as a feeder.** Enable debug logging for `custom_components.vson_cloud` and open an issue with the device's `type` code — a new `DeviceFamily` can be mapped for it.
 
 **Does it work without the cloud?** This integration talks to the VSON cloud. If you want fully local control of the WP8621, reflash it with ESPHome instead — a separate, hardware-level route documented in **[esphome/README.md](esphome/README.md)** (local only, no cloud, keeps the original chip). The two approaches are independent: use the cloud integration here, *or* the ESPHome firmware.
 
