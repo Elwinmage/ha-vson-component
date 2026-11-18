@@ -118,11 +118,13 @@ No credentials or tokens ever leave your Home Assistant instance except toward t
 
 ## Installation
 
-### HACS (recommended)
+### Marketplace (recommended)
 
-1. In HACS, add this repository as a **custom repository** (category *Integration*).
-2. Install **VSON**, then restart Home Assistant.
-3. Go to **Settings → Devices & Services → Add Integration → VSON**.
+> Since Home Assistant 2026.11, HACS is part of Home Assistant as the **Marketplace** (*Settings → Marketplace*): nothing to install, and an existing HACS installation is migrated automatically. On an older Home Assistant, the same steps work in HACS (*custom repository*, category *Integration*).
+
+1. Go to **Settings → Marketplace**, select **Add from link** (top right) and enter `Elwinmage/ha-vson-component`.
+2. Install **VSON** (with HACS on an older Home Assistant, restart afterwards).
+3. Add the integration: [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=vson_cloud) or **Settings → Devices & Services → Add Integration → VSON**.
 
 ### Manual
 

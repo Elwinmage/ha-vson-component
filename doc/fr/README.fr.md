@@ -29,11 +29,13 @@ Tout passe par de simples requêtes HTTPS POST vers `apis.myvsoncloud.com`, rét
 
 ## Installation
 
-### HACS (recommandé)
+### Marketplace (recommandé)
 
-1. Dans HACS, ajoutez ce dépôt comme **dépôt personnalisé** (catégorie *Intégration*).
-2. Installez **VSON**, puis redémarrez Home Assistant.
-3. **Paramètres → Appareils et services → Ajouter une intégration → VSON**.
+> Depuis Home Assistant 2026.11, HACS fait partie de Home Assistant sous le nom de **Marketplace** (*Paramètres → Marketplace*) : rien à installer, et une installation HACS existante est migrée automatiquement. Sur un Home Assistant plus ancien, les mêmes étapes fonctionnent dans HACS (*dépôt personnalisé*, catégorie *Intégration*).
+
+1. Allez dans **Paramètres → Marketplace**, choisissez **Ajouter depuis un lien** (en haut à droite) et saisissez `Elwinmage/ha-vson-component`.
+2. Installez **VSON** (avec HACS sur un Home Assistant plus ancien, redémarrez ensuite).
+3. Ajoutez l'intégration : [![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=vson_cloud) ou **Paramètres → Appareils et services → Ajouter une intégration → VSON**.
 
 ### Manuelle
 
