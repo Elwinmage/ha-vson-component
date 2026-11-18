@@ -25,3 +25,21 @@ def test_userid_decrypts_with_header_key():
     # A real encrypted userId captured from a live login response.
     enc = "+ONmTPCVSlCGaJsR9llDunGHcZLY/xQJod4KAoLlCAfSqQbEf8wKaw=="
     assert crypto.dec_header(enc) == "a373c1f9a9b0466f9c01f8124cd57f2f"
+
+
+def test_unpad_rejects_bad_length():
+    import pytest
+
+    with pytest.raises(ValueError, match="length"):
+        crypto._pkcs5_unpad(b"")
+    with pytest.raises(ValueError, match="length"):
+        crypto._pkcs5_unpad(b"123")
+
+
+def test_unpad_rejects_bad_padding():
+    import pytest
+
+    with pytest.raises(ValueError, match="padding"):
+        crypto._pkcs5_unpad(b"1234567\x00")
+    with pytest.raises(ValueError, match="padding"):
+        crypto._pkcs5_unpad(b"1234567\x09")

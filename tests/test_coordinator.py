@@ -56,3 +56,69 @@ async def test_generic_device_has_no_home(hass):
     dev = data["gen-1"]
     assert dev.family.key == "generic"
     assert dev.home == {}
+
+
+# ── Error paths and feed strategies ───────────────────────────────────────────
+
+
+async def test_client_property(coordinator, mock_client):
+    assert coordinator.client is mock_client
+
+
+async def test_device_list_failure_raises_update_failed(hass, mock_client):
+    import pytest
+    from homeassistant.helpers.update_coordinator import UpdateFailed
+
+    from custom_components.vson_cloud.client import VsonConnectionError
+
+    mock_client.get_devices.side_effect = VsonConnectionError("down")
+    coord = VsonCoordinator(hass, mock_client, scan_interval=30)
+    with pytest.raises(UpdateFailed):
+        await coord._async_update_data()
+
+
+async def test_update_skips_devices_without_id_and_tolerates_home_errors(
+    hass, mock_client
+):
+    from custom_components.vson_cloud.client import VsonConnectionError
+
+    from .conftest import MOCK_DEVICE
+
+    mock_client.get_devices.return_value = [{"name": "ghost"}, MOCK_DEVICE]
+    mock_client.bley_home.side_effect = VsonConnectionError("timeout")
+    coord = VsonCoordinator(hass, mock_client, scan_interval=30)
+    data = await coord._async_update_data()
+    # The id-less entry is dropped; the feeder is kept without home data.
+    assert list(data) == [MOCK_DID]
+    assert data[MOCK_DID].home == {}
+
+
+async def test_feed_now_unknown_device_is_noop(coordinator, mock_client):
+    await coordinator.async_feed_now("does-not-exist")
+    mock_client.bley_feed_now.assert_not_awaited()
+    coordinator.async_request_refresh.assert_not_awaited()
+
+
+async def test_feed_now_rotate_mode(coordinator, mock_client, monkeypatch):
+    from dataclasses import replace
+
+    from custom_components.vson_cloud import devices
+    from custom_components.vson_cloud.const import FEED_MODE_ROTATE_ID
+    from custom_components.vson_cloud.devices import WP8621A_FAMILY
+
+    rotate_family = replace(WP8621A_FAMILY, feed_mode=FEED_MODE_ROTATE_ID)
+    monkeypatch.setitem(devices._BY_TYPE, "86221", rotate_family)
+    await coordinator.async_feed_now(MOCK_DID)
+    mock_client.bley_rotate.assert_awaited_once_with(MOCK_DID)
+    mock_client.bley_feed_now.assert_not_awaited()
+    coordinator.async_request_refresh.assert_awaited_once()
+
+
+async def test_feed_now_without_mac_logs_and_skips(coordinator, mock_client):
+    from custom_components.vson_cloud.devices import VsonDevice
+
+    coordinator.data = {"nomac": VsonDevice(raw={"id": "nomac", "type": "86221"})}
+    await coordinator.async_feed_now("nomac")
+    mock_client.bley_feed_now.assert_not_awaited()
+    mock_client.bley_rotate.assert_not_awaited()
+    coordinator.async_request_refresh.assert_not_awaited()

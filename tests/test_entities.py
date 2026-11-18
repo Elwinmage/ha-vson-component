@@ -92,3 +92,111 @@ async def test_schedule_switch_optimistic(coordinator, mock_client):
     mock_client.bley_set_schedule_enabled.assert_awaited_with(MOCK_DID, True)
     await sw.async_turn_off()
     assert sw.is_on is False
+
+
+# ── Edge cases ────────────────────────────────────────────────────────────────
+
+
+def test_food_shortage_unknown_values(coordinator):
+    bs = VsonBinarySensor(
+        coordinator, MOCK_DID, _desc(BINARY_DESCRIPTIONS, "food_shortage")
+    )
+    raw = coordinator.data[MOCK_DID].raw
+    coordinator.data[MOCK_DID] = VsonDevice(raw=raw, home={"battery": 1})
+    assert bs.is_on is None
+    coordinator.data[MOCK_DID] = VsonDevice(raw=raw, home={"isMaterial": "n/a"})
+    assert bs.is_on is None
+
+
+def test_entities_without_device(coordinator):
+    coordinator.data = {}
+    bs = VsonBinarySensor(coordinator, MOCK_DID, _desc(BINARY_DESCRIPTIONS, "online"))
+    assert bs.is_on is None
+    assert bs.available is False
+    sensor = VsonSensor(coordinator, MOCK_DID, _desc(SENSOR_DESCRIPTIONS, "battery"))
+    assert sensor.native_value is None
+    assert sensor._value("battery", "dflt") == "dflt"
+
+
+def test_food_shortage_availability_follows_base(coordinator):
+    bs = VsonBinarySensor(
+        coordinator, MOCK_DID, _desc(BINARY_DESCRIPTIONS, "food_shortage")
+    )
+    assert bs.available is True
+
+
+def test_sensor_value_fn_and_value_helper(coordinator):
+    from custom_components.vson_cloud.sensor import VsonSensorDescription
+
+    desc = VsonSensorDescription(key="custom", value_fn=lambda dev: dev.mac)
+    sensor = VsonSensor(coordinator, MOCK_DID, desc)
+    assert sensor.native_value == "AABBCCDDEEFF"
+    assert sensor._value("battery") == 80
+
+
+def test_reef_role_mixin_without_translation_key():
+    from custom_components.vson_cloud.entity import ReefRoleMixin
+
+    class _Plain(ReefRoleMixin):
+        translation_key = None
+
+    plain = _Plain()
+    assert plain.extra_state_attributes is None
+    plain._attr_extra_state_attributes = {"a": 1}
+    assert plain.extra_state_attributes == {"a": 1}
+
+
+def test_device_info_without_data(coordinator):
+    from custom_components.vson_cloud.entity import build_device_info
+
+    coordinator.data = None
+    info = build_device_info(coordinator, "unknown")
+    assert info["name"] == "unknown"
+    assert info["model"] == "VSON device"
+
+
+async def test_refresh_button_nudges_feeder(coordinator, mock_client):
+    from custom_components.vson_cloud.button import (
+        REFRESH_DESCRIPTION,
+        VsonRefreshButton,
+    )
+
+    mock_client.bley_refresh.side_effect = RuntimeError("cloud hiccup")
+    button = VsonRefreshButton(coordinator, MOCK_DID, REFRESH_DESCRIPTION)
+    assert button.available is True
+    # A failing nudge must not prevent the coordinator refresh.
+    await button.async_press()
+    mock_client.bley_refresh.assert_awaited_once_with("AABBCCDDEEFF")
+    coordinator.async_request_refresh.assert_awaited_once()
+
+
+async def test_refresh_button_generic_device(coordinator, mock_client):
+    from custom_components.vson_cloud.button import (
+        REFRESH_DESCRIPTION,
+        VsonRefreshButton,
+    )
+
+    from .conftest import MOCK_GENERIC_DEVICE
+
+    coordinator.data = {"gen-1": VsonDevice(raw=dict(MOCK_GENERIC_DEVICE))}
+    button = VsonRefreshButton(coordinator, "gen-1", REFRESH_DESCRIPTION)
+    await button.async_press()
+    mock_client.bley_refresh.assert_not_awaited()
+    coordinator.async_request_refresh.assert_awaited_once()
+
+
+async def test_platforms_skip_unsupported_capabilities(hass, coordinator):
+    """A generic device only gets the online sensor and the refresh button."""
+    from unittest.mock import MagicMock
+
+    from custom_components.vson_cloud import binary_sensor, button, sensor, switch
+
+    from .conftest import MOCK_GENERIC_DEVICE
+
+    coordinator.data = {"gen-1": VsonDevice(raw=dict(MOCK_GENERIC_DEVICE))}
+    hass.data["vson_cloud"] = {"e": coordinator}
+    entry = MagicMock(entry_id="e")
+    added: list = []
+    for platform in (binary_sensor, button, sensor, switch):
+        await platform.async_setup_entry(hass, entry, added.extend)
+    assert sorted(e.entity_description.key for e in added) == ["online", "refresh"]

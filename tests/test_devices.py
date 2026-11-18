@@ -59,3 +59,26 @@ def test_value_prefers_home_over_raw():
     dev = VsonDevice(raw={"battery": 10}, home={"battery": 88})
     assert dev.value("battery") == 88
     assert dev.value("missing", "x") == "x"
+
+
+async def test_fetch_bley_home_without_mac_returns_empty():
+    from unittest.mock import AsyncMock, MagicMock
+
+    client = MagicMock()
+    client.bley_home = AsyncMock()
+    assert await WP8621_FAMILY.fetch_home(client, {"id": "x"}) == {}
+    client.bley_home.assert_not_awaited()
+
+
+def test_device_online_edge_cases():
+    # Unparsable equipmentState falls back to the device-list flag.
+    assert VsonDevice(raw={"onoff": "1"}, home={"equipmentState": "?"}).is_online
+    # "status" is used when "onoff" is absent.
+    assert VsonDevice(raw={"status": "offline"}).is_online is False
+    # Unknown flag text is reported as unknown.
+    assert VsonDevice(raw={"onoff": "maybe"}).is_online is None
+
+
+def test_device_name_fallbacks():
+    assert VsonDevice(raw={"typeName": "Feeder"}).name == "Feeder"
+    assert VsonDevice(raw={"mac": "AA"}).name == "VSON AA"

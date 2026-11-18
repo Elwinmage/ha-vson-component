@@ -63,3 +63,22 @@ async def test_coordinator_raises_issue_for_generic_device(hass):
 
     reg = ir.async_get(hass)
     assert reg.async_get_issue(DOMAIN, "unknown_device_9999") is not None
+
+
+async def test_reconcile_ignores_other_domains(hass):
+    ir.async_create_issue(
+        hass,
+        "other_domain",
+        "unknown_device_1234",
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="x",
+    )
+    async_reconcile_unknown_devices(hass, {})
+    reg = ir.async_get(hass)
+    assert reg.async_get_issue("other_domain", "unknown_device_1234") is not None
+
+
+async def test_fix_flow_without_data(hass):
+    flow = await async_create_fix_flow(hass, "unknown_device_x", None)
+    assert isinstance(flow, UnknownDeviceRepairFlow)

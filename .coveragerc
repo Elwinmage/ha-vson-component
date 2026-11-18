@@ -1,11 +1,25 @@
+# Coverage.py configuration for the vson_cloud integration.
+#
+# Single source of truth: the pre-commit pytest hook passes it explicitly with
+# --cov-config=.coveragerc and writes its reports to ./reports/.
+
 [run]
-source =
-    custom_components
+source = custom_components/vson_cloud
+branch = False
 
 [report]
-exclude_lines =
-    pragma: no cover
-    raise NotImplemented\(\)
+# `exclude_also` ADDS to the built-in defaults (which already include
+# "pragma: no cover"). The older `exclude_lines` REPLACED them entirely.
+#
+# CAREFUL: a pattern here excludes the *block the matched line opens*, not the
+# line alone. Never add a pattern matching a closing parenthesis of a
+# multi-line signature: it would exclude every such function.
+exclude_also =
     if __name__ == .__main__.:
-    main\(\)
+    if TYPE_CHECKING:
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+
 show_missing = True
+skip_covered = False
