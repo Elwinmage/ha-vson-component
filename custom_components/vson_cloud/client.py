@@ -40,13 +40,20 @@ from .const import (
     HDR_OST,
     HDR_PID,
     HDR_UUID_PLAIN,
+    RET_ACCOUNT_UNKNOWN,
     RET_OK,
     RET_TOKEN_INVALID,
+    RET_WRONG_PASSWORD,
     SVC_AIR,
     SVC_MEMBER,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Return codes meaning "the session or the credentials are not accepted".
+_AUTH_RET_CODES = frozenset(
+    {RET_TOKEN_INVALID, RET_ACCOUNT_UNKNOWN, RET_WRONG_PASSWORD}
+)
 
 
 class VsonError(Exception):
@@ -149,8 +156,10 @@ class VsonClient:
             ) as resp:
                 resp.raise_for_status()
                 payload = await resp.json(content_type=None)
-        except ClientError as exc:
-            raise VsonConnectionError(str(exc)) from exc
+        except (ClientError, TimeoutError) as exc:
+            # aiohttp raises a bare TimeoutError on a slow cloud (not a ClientError);
+            # without this, Home Assistant would never retry via ConfigEntryNotReady.
+            raise VsonConnectionError(str(exc) or type(exc).__name__) from exc
 
         raw_ret = payload.get("retCode", payload.get("code"))
         try:
@@ -160,8 +169,10 @@ class VsonClient:
         if ret != RET_OK:
             result = payload.get("result")
             msg = result if isinstance(result, str) else None
-            if ret == RET_TOKEN_INVALID:
-                raise VsonAuthError(msg or "token invalid")
+            if ret in _AUTH_RET_CODES:
+                # Expired session or rejected credentials: both need a new login
+                # or a reauth flow, never a generic API error.
+                raise VsonAuthError(msg or f"authentication rejected ({ret})")
             raise VsonApiError(ret, msg)
         return payload.get("result")
 

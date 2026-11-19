@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import timedelta
 
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .client import VsonClient, VsonConnectionError
+from .client import VsonAuthError, VsonClient, VsonConnectionError
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, FEED_MODE_ROTATE_ID
 from .devices import GENERIC_FAMILY, VsonDevice
 from .repairs import async_reconcile_unknown_devices
@@ -30,9 +32,12 @@ class VsonCoordinator(DataUpdateCoordinator[dict[str, VsonDevice]]):
         client: VsonClient,
         scan_interval: int = DEFAULT_SCAN_INTERVAL,
         entry_id: str | None = None,
+        on_token_refresh: Callable[[], None] | None = None,
     ) -> None:
         self._client = client
         self.entry_id = entry_id
+        # Called after a successful re-login so the new token can be persisted.
+        self._on_token_refresh = on_token_refresh
         super().__init__(
             hass,
             _LOGGER,
@@ -44,10 +49,43 @@ class VsonCoordinator(DataUpdateCoordinator[dict[str, VsonDevice]]):
     def client(self) -> VsonClient:
         return self._client
 
+    async def _async_reauthenticate(self) -> None:
+        """Log in again after the cloud rejected the session token.
+
+        Raises ConfigEntryAuthFailed (which starts the reauth flow) when the
+        stored credentials are refused too.
+        """
+        _LOGGER.info("VSON session rejected, logging in again")
+        try:
+            await self._client.authenticate()
+        except VsonAuthError as exc:
+            raise ConfigEntryAuthFailed(
+                "VSON credentials rejected, reauthentication required"
+            ) from exc
+        except VsonConnectionError as exc:
+            raise UpdateFailed(f"Failed to renew the VSON session: {exc}") from exc
+        if self._on_token_refresh is not None:
+            self._on_token_refresh()
+
+    async def _async_fetch_devices(self) -> list[dict]:
+        """Fetch the account device list, renewing the session once if needed."""
+        try:
+            return await self._client.get_devices()
+        except VsonAuthError:
+            await self._async_reauthenticate()
+        try:
+            return await self._client.get_devices()
+        except VsonAuthError as exc:
+            # A freshly issued token was refused as well: stop polling and ask
+            # the user to reauthenticate.
+            raise ConfigEntryAuthFailed(
+                "VSON session rejected right after a new login"
+            ) from exc
+
     async def _async_update_data(self) -> dict[str, VsonDevice]:
         """Pull fresh data from the VSON cloud."""
         try:
-            raw_devices = await self._client.get_devices()
+            raw_devices = await self._async_fetch_devices()
         except VsonConnectionError as exc:
             raise UpdateFailed(f"Failed to fetch device list: {exc}") from exc
 

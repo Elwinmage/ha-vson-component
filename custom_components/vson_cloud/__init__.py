@@ -107,7 +107,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _persist_token(hass, entry, client)
 
     coordinator = VsonCoordinator(
-        hass, client, scan_interval=interval, entry_id=entry.entry_id
+        hass,
+        client,
+        scan_interval=interval,
+        entry_id=entry.entry_id,
+        on_token_refresh=lambda: _persist_token(hass, entry, client),
     )
     await coordinator.async_config_entry_first_refresh()
 

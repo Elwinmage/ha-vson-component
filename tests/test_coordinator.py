@@ -122,3 +122,66 @@ async def test_feed_now_without_mac_logs_and_skips(coordinator, mock_client):
     mock_client.bley_feed_now.assert_not_awaited()
     mock_client.bley_rotate.assert_not_awaited()
     coordinator.async_request_refresh.assert_not_awaited()
+
+
+# ── Session renewal ───────────────────────────────────────────────────────────
+
+
+async def test_expired_token_triggers_relogin_and_persists_token(hass, mock_client):
+    from unittest.mock import MagicMock
+
+    from custom_components.vson_cloud.client import VsonAuthError
+
+    from .conftest import MOCK_DEVICE
+
+    mock_client.get_devices.side_effect = [VsonAuthError("expired"), [MOCK_DEVICE]]
+    on_refresh = MagicMock()
+    coord = VsonCoordinator(
+        hass, mock_client, scan_interval=30, on_token_refresh=on_refresh
+    )
+    data = await coord._async_update_data()
+    assert MOCK_DID in data
+    mock_client.authenticate.assert_awaited_once()
+    on_refresh.assert_called_once()
+
+
+async def test_relogin_rejected_raises_config_entry_auth_failed(hass, mock_client):
+    import pytest
+    from homeassistant.exceptions import ConfigEntryAuthFailed
+
+    from custom_components.vson_cloud.client import VsonAuthError
+
+    mock_client.get_devices.side_effect = VsonAuthError("expired")
+    mock_client.authenticate.side_effect = VsonAuthError("wrong password")
+    coord = VsonCoordinator(hass, mock_client, scan_interval=30)
+    with pytest.raises(ConfigEntryAuthFailed):
+        await coord._async_update_data()
+
+
+async def test_new_token_rejected_raises_config_entry_auth_failed(hass, mock_client):
+    import pytest
+    from homeassistant.exceptions import ConfigEntryAuthFailed
+
+    from custom_components.vson_cloud.client import VsonAuthError
+
+    mock_client.get_devices.side_effect = VsonAuthError("expired")
+    coord = VsonCoordinator(hass, mock_client, scan_interval=30)
+    with pytest.raises(ConfigEntryAuthFailed):
+        await coord._async_update_data()
+    mock_client.authenticate.assert_awaited_once()
+
+
+async def test_relogin_connection_error_raises_update_failed(hass, mock_client):
+    import pytest
+    from homeassistant.helpers.update_coordinator import UpdateFailed
+
+    from custom_components.vson_cloud.client import (
+        VsonAuthError,
+        VsonConnectionError,
+    )
+
+    mock_client.get_devices.side_effect = VsonAuthError("expired")
+    mock_client.authenticate.side_effect = VsonConnectionError("down")
+    coord = VsonCoordinator(hass, mock_client, scan_interval=30)
+    with pytest.raises(UpdateFailed):
+        await coord._async_update_data()

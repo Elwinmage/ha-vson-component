@@ -221,3 +221,25 @@ async def test_bley_commands_send_expected_fields(session):
         "openTime": "08:00",
         "frequency": "3",
     }
+
+
+@pytest.mark.parametrize("code", [1007, "1008"])
+async def test_rejected_login_raises_auth_error(session, code):
+    # Unknown account / wrong password must surface as an auth error so the
+    # config flow shows invalid_auth and setup starts the reauth flow.
+    client = _client(session)
+    session.queue({"retCode": code, "result": "rejected"})
+    with pytest.raises(VsonAuthError):
+        await client.authenticate()
+
+
+async def test_timeout_raises_connection_error():
+    from custom_components.vson_cloud.client import VsonConnectionError
+
+    class _TimeoutSession:
+        def post(self, *args, **kwargs):
+            raise TimeoutError
+
+    client = VsonClient(_TimeoutSession(), "test@example.com", "secret", token="t")
+    with pytest.raises(VsonConnectionError):
+        await client.get_devices()
