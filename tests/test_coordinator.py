@@ -93,6 +93,21 @@ async def test_update_skips_devices_without_id_and_tolerates_home_errors(
     assert data[MOCK_DID].home == {}
 
 
+async def test_update_tolerates_api_errors_on_home(hass, mock_client):
+    """A non-zero retCode for one device must not fail the whole poll."""
+    from custom_components.vson_cloud.client import VsonApiError
+
+    from .conftest import MOCK_DEVICE, MOCK_GENERIC_DEVICE
+
+    mock_client.get_devices.return_value = [MOCK_DEVICE, MOCK_GENERIC_DEVICE]
+    mock_client.bley_home.side_effect = VsonApiError(5, "device busy")
+    coord = VsonCoordinator(hass, mock_client, scan_interval=30)
+    data = await coord._async_update_data()
+    # Both devices survive; only the home payload of the feeder is missing.
+    assert sorted(data) == sorted([MOCK_DID, MOCK_GENERIC_DEVICE["id"]])
+    assert data[MOCK_DID].home == {}
+
+
 async def test_feed_now_unknown_device_is_noop(coordinator, mock_client):
     await coordinator.async_feed_now("does-not-exist")
     mock_client.bley_feed_now.assert_not_awaited()

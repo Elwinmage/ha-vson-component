@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .client import VsonAuthError, VsonClient, VsonConnectionError
+from .client import VsonApiError, VsonAuthError, VsonClient, VsonConnectionError
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, FEED_MODE_ROTATE_ID
 from .devices import GENERIC_FAMILY, VsonDevice
 from .repairs import async_reconcile_unknown_devices
@@ -97,7 +97,9 @@ class VsonCoordinator(DataUpdateCoordinator[dict[str, VsonDevice]]):
             family = device.family
             try:
                 device.home = await family.fetch_home(self._client, raw)
-            except VsonConnectionError as exc:
+            except (VsonConnectionError, VsonApiError) as exc:
+                # Keep a single misbehaving device from failing the whole poll:
+                # its entities simply stay on their previous/unknown state.
                 _LOGGER.warning(
                     "Could not fetch home data for %s (%s): %s",
                     device.name,
